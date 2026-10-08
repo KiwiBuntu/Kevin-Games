@@ -10,6 +10,7 @@
   --btn: #ffffff;
   --btn-shadow: #1f6f93;
   --font: "Fredoka", "Baloo 2", "Comic Sans MS", "Chalkboard SE", system-ui, sans-serif;
+  --emoji: "Noto Color Emoji", "Apple Color Emoji", "Segoe UI Emoji", sans-serif;
 }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -46,6 +47,7 @@ html, body {
   align-items: center;
   justify-content: center;
   gap: 2px;
+  font-family: var(--emoji);
   transition: transform 0.08s, box-shadow 0.08s;
 }
 .btn:active { transform: translateY(4px); box-shadow: 0 1px 0 var(--ink); }
@@ -56,3 +58,25 @@ html, body {
   .btn { font-size: 22px; height: 50px; min-width: 50px; border-radius: 14px; padding: 0 8px; }
   .btn.round { width: 50px; }
 }
+
+/* "Hooray!" screen (shared/win.js) */
+.win-overlay {
+  position: fixed; inset: 0; display: none; z-index: 40;
+  align-items: center; justify-content: center;
+  background: rgba(255, 255, 255, 0.35);
+}
+.win-overlay.show { display: flex; }
+.win-card {
+  background: #fff; border: 6px solid var(--ink); border-radius: 32px;
+  box-shadow: 0 10px 0 var(--ink); padding: 24px 32px; text-align: center;
+  animation: win-pop 0.5s cubic-bezier(.2, 1.6, .4, 1);
+}
+.win-card h1 { margin: 0 0 8px; font-size: 56px; color: #ff4d4d; text-shadow: 3px 3px 0 var(--sun); }
+.win-pic { font-family: var(--emoji); font-size: 80px; line-height: 1.1; animation: win-wiggle 1s ease-in-out infinite; }
+.win-row { display: flex; gap: 16px; justify-content: center; margin-top: 16px; }
+.win-row .btn { font-size: 40px; height: 80px; min-width: 100px; }
+@keyframes win-pop { from { transform: scale(0.3); } to { transform: scale(1); } }
+@keyframes win-wiggle { 0%, 100% { transform: rotate(-6deg); } 50% { transform: rotate(6deg); } }
+
+/* Pictures made from emoji: always use the colour emoji font */
+.emoji { font-family: var(--emoji); }

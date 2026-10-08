@@ -8,8 +8,9 @@ Ad-free, offline-friendly games for a 5 year old, built with plain HTML + JavaSc
 www/                    ← upload this folder to the web server
 ├── index.html          ← game picker
 ├── manifest.json, sw.js, icons/   ← "Add to Home Screen" app + offline support
-├── shared/             ← styles, sound effects, confetti
-└── games/trains/       ← Train Yard
+├── shared/             ← styles, sound effects, confetti, "Hooray!" screen
+├── games/trains/       ← Train Yard
+└── games/memory/       ← Memory Match
 ```
 
 ## Test locally

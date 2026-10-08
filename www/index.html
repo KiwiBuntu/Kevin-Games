@@ -52,9 +52,12 @@
     }
     .tile:active { transform: translateY(8px); box-shadow: 0 2px 0 var(--ink); }
     .tile .pic { font-size: 110px; line-height: 1; animation: chug 1.2s ease-in-out infinite; }
-    .tile .name { font-size: 30px; font-weight: 700; margin-top: 8px; }
+    .tile .name { font-size: 30px; font-weight: 700; margin-top: 8px; text-align: center; line-height: 1.05; padding: 0 8px; }
     @keyframes chug { 0%, 100% { transform: translateX(-6px) rotate(-3deg); } 50% { transform: translateX(6px) rotate(3deg); } }
     .trains { background: linear-gradient(#ffe8a3, #ffc65c); }
+    .memory { background: linear-gradient(#ffd1ec, #ff8fc8); }
+    .memory .pic { animation: flipy 2.4s ease-in-out infinite; }
+    @keyframes flipy { 0%, 60%, 100% { transform: rotateY(0); } 80% { transform: rotateY(180deg); } }
 
     @media (max-width: 480px) {
       .tile { width: 170px; height: 170px; border-radius: 28px; }
@@ -72,8 +75,12 @@
 
   <div class="games">
     <a class="tile trains" href="games/trains/index.html">
-      <div class="pic">🚂</div>
+      <div class="pic emoji">🚂</div>
       <div class="name">Train Yard</div>
+    </a>
+    <a class="tile memory" href="games/memory/index.html">
+      <div class="pic emoji">🃏</div>
+      <div class="name">Memory Match</div>
     </a>
   </div>
 

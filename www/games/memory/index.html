@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#7fd3ff">
+  <title>Memory Match</title>
+  <link rel="manifest" href="../../manifest.json">
+  <link rel="icon" href="../../icons/icon-192.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;700&display=swap">
+  <link rel="stylesheet" href="../../shared/style.css">
+  <style>
+    body { display: flex; flex-direction: column; }
+    #bar {
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
+      padding: max(10px, env(safe-area-inset-top)) 12px 10px;
+      flex-wrap: wrap;
+    }
+    #bar .group { display: flex; gap: 8px; align-items: center; }
+    #sizes .btn { font-size: 20px; padding: 0 8px; }
+    @media (max-width: 600px) { #bar { justify-content: center; } }
+
+    #board {
+      flex: 1; min-height: 0;
+      display: grid; place-content: center;
+      gap: var(--gap, 10px);
+      padding: 10px 10px max(16px, env(safe-area-inset-bottom));
+    }
+
+    .card {
+      width: var(--cw); height: calc(var(--cw) * 1.25);
+      padding: 0; border: 0; background: none; cursor: pointer;
+      perspective: 800px;
+      animation: deal 0.4s cubic-bezier(.2, 1.5, .4, 1) backwards;
+    }
+    .inner {
+      position: relative; width: 100%; height: 100%;
+      transform-style: preserve-3d;
+      transition: transform 0.35s;
+    }
+    .card.up .inner { transform: rotateY(180deg); }
+    .face {
+      position: absolute; inset: 0;
+      border: 5px solid var(--ink); border-radius: calc(var(--cw) * 0.16);
+      box-shadow: 0 5px 0 var(--ink);
+      backface-visibility: hidden; -webkit-backface-visibility: hidden;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .back {
+      background:
+        radial-gradient(circle at 25% 25%, rgba(255,255,255,.35) 12%, transparent 13%) 0 0 / calc(var(--cw) * 0.33) calc(var(--cw) * 0.33),
+        var(--back, #3a86ff);
+      font-family: var(--emoji);
+      font-size: calc(var(--cw) * 0.45);
+    }
+    .front {
+      background: #fff;
+      transform: rotateY(180deg);
+      font-family: var(--emoji);
+      font-size: calc(var(--cw) * 0.62);
+      line-height: 1;
+    }
+    .card.matched .front { background: #c9f7c2; animation: happy 0.6s; }
+    .card.wrong .front { background: #ffd9d9; animation: shake 0.4s; }
+
+    @keyframes deal { from { transform: scale(0) rotate(-20deg); } to { transform: scale(1); } }
+    @keyframes happy { 0%, 100% { transform: rotateY(180deg) scale(1); } 40% { transform: rotateY(180deg) scale(1.15); } }
+    @keyframes shake {
+      0%, 100% { transform: rotateY(180deg) translateX(0); }
+      25% { transform: rotateY(180deg) translateX(-8px); }
+      75% { transform: rotateY(180deg) translateX(8px); }
+    }
+  </style>
+</head>
+<body>
+  <div id="bar">
+    <div class="group">
+      <a class="btn round" href="../../index.html" aria-label="Home">🏠</a>
+    </div>
+    <div class="group" id="sizes">
+      <button class="btn" data-size="small" aria-label="Few cards">🃏🃏</button>
+      <button class="btn" data-size="medium" aria-label="More cards">🃏🃏🃏</button>
+      <button class="btn" data-size="big" aria-label="Lots of cards">🃏🃏🃏🃏</button>
+    </div>
+    <div class="group">
+      <button class="btn round" id="theme" aria-label="Change pictures">🐶</button>
+      <button class="btn round" id="new" aria-label="New game">🔄</button>
+      <button class="btn round" id="mute" aria-label="Sound on or off">🔊</button>
+    </div>
+  </div>
+  <div id="board"></div>
+
+  <script src="../../shared/sound.js"></script>
+  <script src="../../shared/celebrate.js"></script>
+  <script src="../../shared/win.js"></script>
+  <script src="memory.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) navigator.serviceWorker.register('../../sw.js').catch(() => {});
+  </script>
+</body>
+</html>

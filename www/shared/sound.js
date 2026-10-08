@@ -88,6 +88,25 @@ const Sound = (() => {
       tone({ freq: 250, to: 180, type: 'square', dur: 0.18, vol: 0.12, delay: 0.14 });
     },
     pop() { tone({ freq: 700, to: 1100, type: 'sine', dur: 0.08, vol: 0.2 }); },
+    // Card flip "whoosh"
+    flip() {
+      noise({ dur: 0.08, vol: 0.18, freq: 2500 });
+      tone({ freq: 500, to: 900, type: 'sine', dur: 0.07, vol: 0.08 });
+    },
+    // Gentle "oh well" for a wrong guess
+    nope() {
+      tone({ freq: 440, to: 330, type: 'triangle', dur: 0.18, vol: 0.14 });
+      tone({ freq: 330, to: 262, type: 'triangle', dur: 0.24, vol: 0.14, delay: 0.18 });
+    },
+    // Read a word out loud with the phone's built-in voice
+    say(text) {
+      if (muted || !('speechSynthesis' in window)) return;
+      const u = new SpeechSynthesisUtterance(text);
+      u.rate = 0.9;
+      u.pitch = 1.3;
+      speechSynthesis.cancel();
+      speechSynthesis.speak(u);
+    },
     sparkle() {
       [1319, 1568, 2093].forEach((f, i) => tone({ freq: f, type: 'sine', dur: 0.15, vol: 0.1, delay: i * 0.07 }));
     },

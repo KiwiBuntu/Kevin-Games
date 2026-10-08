@@ -2,7 +2,6 @@
 (() => {
   const canvas = document.getElementById('board');
   const ctx = canvas.getContext('2d');
-  const winEl = document.getElementById('win');
   const muteBtn = document.getElementById('mute');
   const INK = '#2b2d42';
 
@@ -80,7 +79,7 @@
     trains = Yard.generate(cols, rows, cfg).map(makeTrain);
     smoke = [];
     won = false;
-    winEl.classList.remove('show');
+    Win.hide();
     layout();
     document.querySelectorAll('#sizes .btn').forEach(b => b.classList.toggle('selected', b.dataset.size === size));
   }
@@ -212,11 +211,7 @@
 
     if (!won && trains.length && trains.every(t => t.state === 'gone')) {
       won = true;
-      setTimeout(() => {
-        Sound.cheer();
-        Celebrate.burst();
-        winEl.classList.add('show');
-      }, 300);
+      setTimeout(() => Win.show({ picture: '🚂💨', again: newGame }), 300);
     }
   }
 
@@ -499,7 +494,6 @@
   canvas.addEventListener('pointerdown', tap);
   document.getElementById('hint').addEventListener('click', showHint);
   document.getElementById('new').addEventListener('click', () => { Sound.unlock(); Sound.pop(); newGame(); });
-  document.getElementById('again').addEventListener('click', () => { Sound.unlock(); Sound.pop(); newGame(); });
   document.querySelectorAll('#sizes .btn').forEach(b => b.addEventListener('click', () => {
     Sound.unlock();
     Sound.pop();
