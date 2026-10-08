@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#7fd3ff">
+  <title>Train Yard</title>
+  <link rel="manifest" href="../../manifest.json">
+  <link rel="icon" href="../../icons/icon-192.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;700&display=swap">
+  <link rel="stylesheet" href="../../shared/style.css">
+  <style>
+    body { display: flex; flex-direction: column; }
+    #bar {
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
+      padding: max(10px, env(safe-area-inset-top)) 12px 10px;
+      flex-wrap: wrap;
+    }
+    #bar .group { display: flex; gap: 8px; align-items: center; }
+    #sizes .btn { font-size: 20px; padding: 0 8px; }
+    @media (max-width: 600px) { #bar { justify-content: center; } }
+    #board { flex: 1; width: 100%; min-height: 0; touch-action: none; display: block; }
+
+    #win {
+      position: fixed; inset: 0; display: none; z-index: 40;
+      align-items: center; justify-content: center;
+      background: rgba(255, 255, 255, 0.35);
+    }
+    #win.show { display: flex; }
+    #win .card {
+      background: #fff; border: 6px solid var(--ink); border-radius: 32px;
+      box-shadow: 0 10px 0 var(--ink); padding: 24px 32px; text-align: center;
+      animation: popin 0.5s cubic-bezier(.2, 1.6, .4, 1);
+    }
+    #win h1 { margin: 0 0 8px; font-size: 56px; color: #ff4d4d; text-shadow: 3px 3px 0 var(--sun); }
+    #win .big { font-size: 80px; line-height: 1.1; animation: wiggle 1s ease-in-out infinite; }
+    #win .row { display: flex; gap: 16px; justify-content: center; margin-top: 16px; }
+    #win .row .btn { font-size: 40px; height: 80px; min-width: 100px; }
+    @keyframes popin { from { transform: scale(0.3); } to { transform: scale(1); } }
+    @keyframes wiggle { 0%, 100% { transform: rotate(-6deg); } 50% { transform: rotate(6deg); } }
+  </style>
+</head>
+<body>
+  <div id="bar">
+    <div class="group">
+      <a class="btn round" href="../../index.html" aria-label="Home">🏠</a>
+    </div>
+    <div class="group" id="sizes">
+      <button class="btn" data-size="small" aria-label="Small yard">🚂</button>
+      <button class="btn" data-size="medium" aria-label="Medium yard">🚂🚃</button>
+      <button class="btn" data-size="big" aria-label="Big yard">🚂🚃🚃</button>
+    </div>
+    <div class="group">
+      <button class="btn round" id="hint" aria-label="Hint">💡</button>
+      <button class="btn round" id="new" aria-label="New board">🔄</button>
+      <button class="btn round" id="mute" aria-label="Sound on or off">🔊</button>
+    </div>
+  </div>
+  <canvas id="board"></canvas>
+
+  <div id="win">
+    <div class="card">
+      <h1>Hooray!</h1>
+      <div class="big">🚂💨</div>
+      <div class="row">
+        <button class="btn" id="again" aria-label="Play again">▶️</button>
+        <a class="btn" href="../../index.html" aria-label="Home">🏠</a>
+      </div>
+    </div>
+  </div>
+
+  <script src="../../shared/sound.js"></script>
+  <script src="../../shared/celebrate.js"></script>
+  <script src="yard.js"></script>
+  <script src="trains.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) navigator.serviceWorker.register('../../sw.js').catch(() => {});
+  </script>
+</body>
+</html>

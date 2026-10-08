@@ -1,0 +1,58 @@
+/* Shared styles for Kevin's Games — bright cartoon look */
+:root {
+  --sky: #7fd3ff;
+  --sky-2: #c9f0ff;
+  --grass: #5cc85a;
+  --grass-dark: #3a9e3c;
+  --ink: #2b2d42;
+  --white: #ffffff;
+  --sun: #ffd60a;
+  --btn: #ffffff;
+  --btn-shadow: #1f6f93;
+  --font: "Fredoka", "Baloo 2", "Comic Sans MS", "Chalkboard SE", system-ui, sans-serif;
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  font-family: var(--font);
+  color: var(--ink);
+  background: linear-gradient(var(--sky) 0%, var(--sky-2) 55%, var(--grass) 55%, var(--grass-dark) 100%);
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+  overscroll-behavior: none;
+}
+
+/* Big chunky cartoon buttons */
+.btn {
+  appearance: none;
+  border: 4px solid var(--ink);
+  background: var(--btn);
+  color: var(--ink);
+  font: inherit;
+  font-size: 28px;
+  line-height: 1;
+  min-width: 60px;
+  height: 60px;
+  padding: 0 12px;
+  border-radius: 18px;
+  box-shadow: 0 5px 0 var(--ink);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  transition: transform 0.08s, box-shadow 0.08s;
+}
+.btn:active { transform: translateY(4px); box-shadow: 0 1px 0 var(--ink); }
+.btn.selected { background: var(--sun); }
+.btn.round { border-radius: 50%; width: 60px; padding: 0; }
+
+@media (max-width: 480px) {
+  .btn { font-size: 22px; height: 50px; min-width: 50px; border-radius: 14px; padding: 0 8px; }
+  .btn.round { width: 50px; }
+}
