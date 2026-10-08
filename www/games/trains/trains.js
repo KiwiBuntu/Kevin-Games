@@ -509,5 +509,6 @@
   window.trainYard = { get trains() { return trains; }, view, get size() { return [cols, rows]; } };
 
   newGame();
+  Sound.intro('Tap a train to drive it away. If another train is in the way, it can\'t go! Clear all the trains.');
   requestAnimationFrame(loop);
 })();

@@ -31,6 +31,7 @@ const Win = (() => {
       el.querySelector('.win-pic').textContent = picture;
       Sound.cheer();
       Celebrate.burst();
+      setTimeout(() => Sound.say(Sound.praise()), 800);
       el.classList.add('show');
     },
     hide() { if (el) el.classList.remove('show'); },

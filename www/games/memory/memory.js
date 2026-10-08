@@ -168,4 +168,5 @@
   window.addEventListener('resize', layout);
 
   newGame();
+  Sound.intro('Turn over two cards. Can you find the pictures that match?');
 })();

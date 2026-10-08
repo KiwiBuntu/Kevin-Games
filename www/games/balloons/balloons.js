@@ -198,7 +198,7 @@
     wordsSpelled++;
     showProgress();
     setTimeout(() => {
-      Sound.say(`${spell.name}! Well done!`);
+      Sound.say(`${spell.name}! ${Sound.praise()}`);
       Celebrate.burst(80);
     }, 600);
     setTimeout(() => {
@@ -461,5 +461,6 @@
 
   layout();
   newGame();
+  Sound.intro(MODES[modeIdx].spell ? 'Pop the letters to spell the word.' : 'Pop the balloons!');
   requestAnimationFrame(loop);
 })();

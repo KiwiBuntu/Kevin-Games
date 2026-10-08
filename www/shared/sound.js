@@ -6,6 +6,22 @@ const Sound = (() => {
   let muted = false;
   try { muted = localStorage.getItem('kg-muted') === '1'; } catch (e) {}
 
+  const PRAISE = ['Well done!', 'Good job buddy!'];
+  let introState = 'done'; // 'waiting' (not spoken yet) → 'talking' → 'done'
+  const introQueue = [];
+
+  function voice(text) {
+    const u = new SpeechSynthesisUtterance(text);
+    u.rate = 0.9;
+    u.pitch = 1.3;
+    return u;
+  }
+
+  // Words asked for before the instructions started get said after them.
+  function flushQueue() {
+    while (introQueue.length) speechSynthesis.speak(voice(introQueue.shift()));
+  }
+
   function ac() {
     if (!ctx) {
       const AC = window.AudioContext || window.webkitAudioContext;
@@ -108,14 +124,41 @@ const Sound = (() => {
       tone({ freq: 440, to: 330, type: 'triangle', dur: 0.18, vol: 0.14 });
       tone({ freq: 330, to: 262, type: 'triangle', dur: 0.24, vol: 0.14, delay: 0.18 });
     },
-    // Read a word out loud with the phone's built-in voice
+    // Read a word out loud with the phone's built-in voice.
+    // While the game instructions are being read, other words wait their turn.
     say(text) {
       if (muted || !('speechSynthesis' in window)) return;
-      const u = new SpeechSynthesisUtterance(text);
-      u.rate = 0.9;
-      u.pitch = 1.3;
-      speechSynthesis.cancel();
-      speechSynthesis.speak(u);
+      if (introState === 'waiting') { introQueue.push(text); return; }
+      if (introState !== 'talking') speechSynthesis.cancel();
+      speechSynthesis.speak(voice(text));
+    },
+    // Random cheer for finishing something
+    praise() {
+      return PRAISE[Math.floor(Math.random() * PRAISE.length)];
+    },
+    // Read the game's instructions once when the page opens. Android only lets a page
+    // talk after it has been touched, so if that's blocked, read them on the first tap.
+    intro(text) {
+      if (muted || !('speechSynthesis' in window)) return;
+      introState = 'waiting';
+      let started = false;
+      const speak = () => {
+        speechSynthesis.cancel();
+        const u = voice(text);
+        u.onstart = () => { started = true; introState = 'talking'; flushQueue(); };
+        u.onend = u.onerror = () => { if (started) introState = 'done'; };
+        speechSynthesis.speak(u);
+      };
+      speak();
+      setTimeout(() => {
+        if (started) return;
+        window.addEventListener('pointerdown', () => {
+          if (started) return;
+          speak();
+          // No voice on this device? Don't hold up the other words.
+          setTimeout(() => { if (!started) { introState = 'done'; flushQueue(); } }, 2000);
+        }, { once: true, capture: true });
+      }, 700);
     },
     sparkle() {
       [1319, 1568, 2093].forEach((f, i) => tone({ freq: f, type: 'sine', dur: 0.15, vol: 0.1, delay: i * 0.07 }));

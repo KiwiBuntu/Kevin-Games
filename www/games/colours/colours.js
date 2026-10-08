@@ -326,5 +326,6 @@
   window.connectColours = { get pairs() { return pairs; }, view, get n() { return n; } };
 
   newGame();
+  Sound.intro('Draw a line to join the dots that are the same colour. The lines can\'t cross!');
   requestAnimationFrame(loop);
 })();
