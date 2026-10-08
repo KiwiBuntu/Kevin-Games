@@ -13,7 +13,12 @@ www/                    ← upload this folder to the web server
 ├── games/memory/       ← Memory Match
 ├── games/balloons/     ← Balloon Pop
 ├── games/colours/      ← Connect the Colours
-└── games/jigsaw/       ← Jigsaw
+├── games/jigsaw/       ← Jigsaw
+├── games/shapes/       ← Shape Sorter
+├── games/dots/         ← Dot to Dot
+├── games/maze/         ← Mazes
+├── games/piano/        ← Animal Piano
+└── games/paint/        ← Paint & Colour
 ```
 
 ## Test locally

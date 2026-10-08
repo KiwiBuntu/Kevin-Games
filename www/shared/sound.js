@@ -10,10 +10,10 @@ const Sound = (() => {
   let introState = 'done'; // 'waiting' (not spoken yet) → 'talking' → 'done'
   const introQueue = [];
 
-  function voice(text) {
+  function voice(text, opts = {}) {
     const u = new SpeechSynthesisUtterance(text);
-    u.rate = 0.9;
-    u.pitch = 1.3;
+    u.rate = opts.rate || 0.9;
+    u.pitch = opts.pitch || 1.3;
     return u;
   }
 
@@ -114,6 +114,24 @@ const Sound = (() => {
       const scale = [523, 587, 659, 784, 880, 1047, 1175, 1319];
       tone({ freq: scale[n % scale.length], type: 'sine', dur: 0.07, vol: 0.09 });
     },
+    // Xylophone note
+    note(freq) {
+      tone({ freq, type: 'triangle', dur: 0.9, vol: 0.26 });
+      tone({ freq: freq * 2, type: 'sine', dur: 0.35, vol: 0.06 });
+      tone({ freq: freq * 4, type: 'sine', dur: 0.08, vol: 0.04 });
+    },
+    // Springy "boing" for a wrong try
+    boing() {
+      tone({ freq: 180, to: 420, type: 'sine', dur: 0.12, vol: 0.18, vibrato: 18 });
+      tone({ freq: 420, to: 200, type: 'sine', dur: 0.18, vol: 0.14, delay: 0.12, vibrato: 18 });
+    },
+    // Car horn "beep beep"
+    honk() {
+      for (const d of [0, 0.22]) {
+        tone({ freq: 392, type: 'square', dur: 0.16, vol: 0.08, delay: d });
+        tone({ freq: 494, type: 'square', dur: 0.16, vol: 0.06, delay: d });
+      }
+    },
     // Jigsaw piece clicking into place
     snap() {
       tone({ freq: 1400, to: 900, type: 'square', dur: 0.04, vol: 0.06 });
@@ -132,11 +150,11 @@ const Sound = (() => {
     },
     // Read a word out loud with the phone's built-in voice.
     // While the game instructions are being read, other words wait their turn.
-    say(text) {
+    say(text, opts) {
       if (muted || !('speechSynthesis' in window)) return;
       if (introState === 'waiting') { introQueue.push(text); return; }
       if (introState !== 'talking') speechSynthesis.cancel();
-      speechSynthesis.speak(voice(text));
+      speechSynthesis.speak(voice(text, opts));
     },
     // Random cheer for finishing something
     praise() {

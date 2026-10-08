@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#7fd3ff">
+  <title>Animal Piano</title>
+  <link rel="manifest" href="../../manifest.json">
+  <link rel="icon" href="../../icons/icon-192.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;700&display=swap">
+  <link rel="stylesheet" href="../../shared/style.css">
+  <style>
+    body { display: flex; flex-direction: column; }
+    #bar {
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
+      padding: max(10px, env(safe-area-inset-top)) 12px 10px;
+    }
+    #bar .group { display: flex; gap: 8px; align-items: center; }
+    #listen[hidden] { display: none; }
+
+    /* The xylophone: bars side by side (landscape) or stacked (portrait) */
+    #keys {
+      flex: 1; min-height: 0; touch-action: none;
+      display: flex; gap: 10px; padding: 10px 16px max(16px, env(safe-area-inset-bottom));
+      align-items: center; justify-content: center;
+    }
+    .key {
+      position: relative; flex: 1;
+      border: 5px solid var(--ink); border-radius: 22px; box-shadow: 0 7px 0 var(--ink);
+      background: var(--c);
+      display: flex; align-items: center; justify-content: flex-start;
+      transition: transform 0.06s, box-shadow 0.06s, filter 0.06s;
+    }
+    .key::before, .key::after { /* little screws holding the bar */
+      content: ""; position: absolute; width: 14px; height: 14px; border-radius: 50%;
+      background: rgba(255, 255, 255, 0.7); border: 3px solid var(--ink);
+    }
+    .key .animal { font-family: var(--emoji); line-height: 1; pointer-events: none; }
+    .key .bubble {
+      position: absolute; padding: 4px 12px; border: 4px solid var(--ink); border-radius: 18px;
+      background: #fff; font-weight: 700; font-size: 26px; white-space: nowrap; pointer-events: none;
+      opacity: 0; transform: scale(0.4); transition: opacity 0.15s, transform 0.2s cubic-bezier(.2, 1.6, .4, 1);
+      z-index: 2;
+    }
+    .key.on { transform: translateY(5px) scale(0.98); box-shadow: 0 2px 0 var(--ink); filter: brightness(1.15); }
+    .key.on .animal { animation: hop 0.35s; }
+    .key.talk .bubble { opacity: 1; transform: scale(1); }
+    .key.glow { animation: glow 0.8s ease-in-out infinite; }
+    @keyframes hop { 40% { transform: translateY(-14px) scale(1.2); } }
+    @keyframes glow {
+      0%, 100% { box-shadow: 0 7px 0 var(--ink), 0 0 0 0 rgba(255, 243, 107, 0.9); }
+      50% { box-shadow: 0 7px 0 var(--ink), 0 0 0 12px rgba(255, 243, 107, 0.9); }
+    }
+
+    /* Landscape: tall bars getting shorter to the right */
+    @media (min-aspect-ratio: 1/1) {
+      #keys { flex-direction: row; }
+      .key { height: calc(100% - var(--i) * 4%); flex-direction: column; justify-content: flex-start; padding-top: 18px; }
+      .key::before { bottom: 18%; left: 50%; margin-left: -7px; }
+      .key::after { top: 32%; left: 50%; margin-left: -7px; }
+      .key .animal { font-size: min(9vw, 64px); }
+      .key .bubble { top: calc(18px + min(9vw, 64px) + 8px); left: 50%; translate: -50% 0; }
+    }
+    /* Portrait: long bars getting shorter downwards */
+    @media (max-aspect-ratio: 1/1) {
+      #keys { flex-direction: column; }
+      .key { width: calc(100% - var(--i) * 5%); padding-left: 14px; }
+      .key::before { right: 16px; top: 50%; margin-top: -7px; }
+      .key::after { left: 38%; top: 50%; margin-top: -7px; }
+      .key .animal { font-size: min(9vh, 52px); }
+      .key .bubble { left: 74px; top: 50%; translate: 0 -50%; }
+    }
+  </style>
+</head>
+<body>
+  <div id="bar">
+    <div class="group">
+      <a class="btn round" href="../../index.html" aria-label="Home">🏠</a>
+    </div>
+    <div class="group">
+      <button class="btn round" id="mode" aria-label="Notes or animal noises">🎵</button>
+      <button class="btn round" id="song" aria-label="Pick a song">🎶</button>
+      <button class="btn round" id="listen" aria-label="Listen to the song" hidden>▶️</button>
+      <button class="btn round" id="mute" aria-label="Sound on or off">🔊</button>
+    </div>
+  </div>
+  <div id="keys"></div>
+
+  <script src="../../shared/sound.js"></script>
+  <script src="../../shared/celebrate.js"></script>
+  <script src="piano.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) navigator.serviceWorker.register('../../sw.js').catch(() => {});
+  </script>
+</body>
+</html>
