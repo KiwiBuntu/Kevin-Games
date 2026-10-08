@@ -3,50 +3,9 @@
 (() => {
   const $ = s => document.querySelector(s);
   const SPEEDS = { slow: 0.7, normal: 0.95, fast: 1.2 };
-  const EMOJIS = ['📖', '🚂', '🚗', '🚀', '🦕', '🐻', '🐶', '🐱', '🐰', '🦁', '🐘', '🐙', '🐠', '🦄', '🧚', '🏰', '🌳', '🌈', '⭐', '🌙', '☀️', '🍎', '🎈', '⚽'];
-  const COLOURS = ['#ff4d4d', '#ff9f1c', '#e0b400', '#6aa31d', '#2ec4b6', '#3a86ff', '#8338ec', '#ff5fa2'];
+  const EMOJIS = ['📖', '🦇', '🚂', '🚗', '🚀', '🦕', '🐻', '🐶', '🐱', '🐰', '🦁', '🐘', '🐙', '🐠', '🦄', '🧚', '🏰', '🌳', '🌈', '⭐', '🌙', '☀️', '🍎', '🎈', '⚽'];
+  const COLOURS = ['#ff4d4d', '#ff9f1c', '#e0b400', '#6aa31d', '#2ec4b6', '#3a86ff', '#8338ec', '#ff5fa2', '#3d405b'];
 
-  const STARTER = `# Kevin and the Big Red Train
-
-Kevin had a **big** red train. It went *choo choo* down the track.
-
-"Where are you going, train?" asked Kevin.
-
----
-
-"To the farm!" said the train. "Hop on!"
-
-So Kevin hopped on. **Toot toot!** Off they went.
-
----
-
-At the farm they saw a cow. "Moo!" said the cow.
-
-They saw a pig. "Oink!" said the pig.
-
-They saw a duck. "Quack!" said the duck.
-
----
-
-Then the train came to a **big** hill.
-
-*Puff, puff, puff.* "I think I can," said the train.
-
-"You can do it!" said Kevin.
-
----
-
-Over the top they went. **Wheee!**
-
-Down, down, down the hill, all the way to Grandpa and Granny's house.
-
----
-
-Grandpa and Granny were waiting with a big hug.
-
-"What a fun trip!" said Kevin.
-
-*"Toot toot. See you tomorrow, Kevin,"* said the train.`;
 
   // ---------- storage (this device only)
   const DB = (() => {
@@ -107,12 +66,19 @@ Grandpa and Granny were waiting with a big hug.
     $('#reader').hidden = true;
     $('#shelf').hidden = false;
     books = await DB.all().catch(() => []);
-    if (!books.length && store.get('kg-read-seeded', '0') !== '1') {
-      const starter = newBook({ text: STARTER, emoji: '🚂', colour: '#ff4d4d' });
-      await DB.put(starter);
-      store.set('kg-read-seeded', '1');
-      books = [starter];
+    // Add any default books this device hasn't had yet (deleted ones stay deleted).
+    let seeded = [];
+    try { seeded = JSON.parse(store.get('kg-read-defaults', '[]')); } catch (e) {}
+    if (store.get('kg-read-seeded', '0') === '1' && !seeded.includes('train')) seeded.push('train'); // older versions
+    for (const d of DefaultBooks) {
+      if (seeded.includes(d.key)) continue;
+      const nb = newBook({ text: d.text, emoji: d.emoji, colour: d.colour });
+      nb.added = Date.now() - DefaultBooks.indexOf(d); // keep them in list order on the shelf
+      await DB.put(nb).catch(() => {});
+      books.push(nb);
+      seeded.push(d.key);
     }
+    store.set('kg-read-defaults', JSON.stringify(seeded));
     books.sort((a, b) => (b.opened || b.added) - (a.opened || a.added));
     const shelf = $('.books');
     shelf.innerHTML = '';
@@ -186,7 +152,7 @@ Grandpa and Granny were waiting with a big hug.
           span.textContent = w.w;
           span.addEventListener('click', e => { e.stopPropagation(); tapWord(mySi, wi); });
           box.appendChild(span);
-          box.appendChild(document.createTextNode(' '));
+          box.appendChild(w.br ? document.createElement('br') : document.createTextNode(' '));
           spans[mySi].push(span);
         });
         si++;
@@ -214,10 +180,21 @@ Grandpa and Granny were waiting with a big hug.
     const el = $('#page');
     let fs = Math.min(56, Math.max(28, window.innerWidth / 22));
     el.style.setProperty('--fs', `${fs}px`);
-    while (el.scrollHeight > el.clientHeight + 2 && fs > 20) {
+    while ((el.scrollHeight > el.clientHeight + 2 || verseWraps(el)) && fs > 20) {
       fs -= 2;
       el.style.setProperty('--fs', `${fs}px`);
     }
+  }
+
+  // Does any line of a poem spill onto a second line? (It spoils the rhyme.)
+  function verseWraps(el) {
+    for (const p of el.querySelectorAll('p')) {
+      if (!p.querySelector('br')) continue;
+      const lines = p.querySelectorAll('br').length + 1;
+      const tops = new Set([...p.querySelectorAll('.w')].map(s => s.offsetTop));
+      if (tops.size > lines) return true;
+    }
+    return false;
   }
 
   function markSentence(si) {

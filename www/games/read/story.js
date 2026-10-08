@@ -24,24 +24,29 @@ const Story = (() => {
   function words(text) {
     const out = [];
     for (const part of inline(text)) {
-      for (const w of part.text.split(/\s+/)) if (w) out.push({ w, style: part.style });
+      for (const w of part.text.split(/[ \t]+/)) {
+        if (w === '\n') { if (out.length) out[out.length - 1].br = true; } // end of a line of verse
+        else if (w.trim()) out.push({ w: w.trim(), style: part.style });
+      }
     }
     // "**Splash**!" leaves "!" on its own: glue it back onto the word before
     for (let i = out.length - 1; i > 0; i--) {
-      if (/^[^\p{L}\p{N}]+$/u.test(out[i].w)) { out[i - 1].w += out[i].w; out.splice(i, 1); }
+      if (/^[.,!?;:…"'”’)\]]+$/u.test(out[i].w)) { out[i - 1].w += out[i].w; out.splice(i, 1); }
     }
     return out;
   }
 
   const endsSentence = w => /[.!?…]["'”’)]*$/.test(w);
 
+  // A sentence ends at . ! ? — unless the next word carries on in lower case ("Moo!" said the cow).
+  const startsNew = w => !w || /^["'“‘(]*[\p{Lu}\p{N}]/u.test(w.w);
   function sentences(ws) {
     const out = [];
     let cur = [];
-    for (const w of ws) {
+    ws.forEach((w, i) => {
       cur.push(w);
-      if (endsSentence(w.w)) { out.push(cur); cur = []; }
-    }
+      if (endsSentence(w.w) && startsNew(ws[i + 1])) { out.push(cur); cur = []; }
+    });
     if (cur.length) out.push(cur);
     return out;
   }
@@ -49,9 +54,15 @@ const Story = (() => {
   // Returns { title, pages: [{ paras: [{ heading, sentences: [[word...]] }] }] }
   function parse(text, fallbackTitle = '') {
     const lines = text.replace(/\r\n?/g, '\n').split('\n');
-    const blocks = []; // { heading, text } | { pageBreak }
+    const blocks = []; // { heading, text, verse } | { pageBreak }
     let para = [];
-    const flush = () => { if (para.length) { blocks.push({ heading: false, text: para.join(' ') }); para = []; } };
+    const flush = () => {
+      if (!para.length) return;
+      // Several short lines = a poem: keep its line breaks. Long wrapped lines = prose.
+      const verse = para.length > 1 && para.reduce((n, l) => n + l.length, 0) / para.length < 60;
+      blocks.push({ heading: false, text: para.join(verse ? ' \n ' : ' '), verse });
+      para = [];
+    };
     for (const raw of lines) {
       const line = raw.trim();
       if (!line) { flush(); continue; }
@@ -74,12 +85,16 @@ const Story = (() => {
         if (count) newPage();
         const ws = words(b.text);
         page.paras.push({ heading: true, sentences: [ws] });
-        count += ws.length + 10; // headings take up more room
+        count += ws.length + 3; // headings take up a little more room
         continue;
       }
-      // a long paragraph flows over pages at sentence ends
+      const ss = sentences(words(b.text));
+      const size = ss.reduce((n, s) => n + s.length, 0);
+      // start a fresh page rather than split a paragraph (or verse) that would fit on one
+      if (count > 0 && count + size > PAGE_WORDS && size <= PAGE_WORDS) newPage();
+      // a paragraph longer than a page flows over pages at sentence ends
       let cur = { heading: false, sentences: [] };
-      for (const s of sentences(words(b.text))) {
+      for (const s of ss) {
         if (count + s.length > PAGE_WORDS && count > 0) {
           if (cur.sentences.length) page.paras.push(cur);
           newPage();
