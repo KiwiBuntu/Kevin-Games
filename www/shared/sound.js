@@ -88,6 +88,11 @@ const Sound = (() => {
       tone({ freq: 250, to: 180, type: 'square', dur: 0.18, vol: 0.12, delay: 0.14 });
     },
     pop() { tone({ freq: 700, to: 1100, type: 'sine', dur: 0.08, vol: 0.2 }); },
+    // Balloon "POP!"
+    balloon() {
+      noise({ dur: 0.12, vol: 0.5, freq: 1800 });
+      tone({ freq: 900 + Math.random() * 300, to: 180, type: 'triangle', dur: 0.12, vol: 0.18 });
+    },
     // Card flip "whoosh"
     flip() {
       noise({ dur: 0.08, vol: 0.18, freq: 2500 });

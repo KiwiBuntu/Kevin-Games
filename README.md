@@ -10,7 +10,8 @@ www/                    ← upload this folder to the web server
 ├── manifest.json, sw.js, icons/   ← "Add to Home Screen" app + offline support
 ├── shared/             ← styles, sound effects, confetti, "Hooray!" screen
 ├── games/trains/       ← Train Yard
-└── games/memory/       ← Memory Match
+├── games/memory/       ← Memory Match
+└── games/balloons/     ← Balloon Pop
 ```
 
 ## Test locally
