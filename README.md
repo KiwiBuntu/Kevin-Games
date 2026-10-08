@@ -19,7 +19,8 @@ www/                    ← upload this folder to the web server
 ├── games/maze/         ← Mazes
 ├── games/piano/        ← Animal Piano
 ├── games/paint/        ← Paint & Colour
-└── games/garage/       ← Parking Garage
+├── games/garage/       ← Parking Garage
+└── games/read/         ← Read Along (stories read aloud)
 ```
 
 ## Test locally
