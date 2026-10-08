@@ -12,7 +12,8 @@ www/                    ← upload this folder to the web server
 ├── games/trains/       ← Train Yard
 ├── games/memory/       ← Memory Match
 ├── games/balloons/     ← Balloon Pop
-└── games/colours/      ← Connect the Colours
+├── games/colours/      ← Connect the Colours
+└── games/jigsaw/       ← Jigsaw
 ```
 
 ## Test locally

@@ -114,6 +114,12 @@ const Sound = (() => {
       const scale = [523, 587, 659, 784, 880, 1047, 1175, 1319];
       tone({ freq: scale[n % scale.length], type: 'sine', dur: 0.07, vol: 0.09 });
     },
+    // Jigsaw piece clicking into place
+    snap() {
+      tone({ freq: 1400, to: 900, type: 'square', dur: 0.04, vol: 0.06 });
+      tone({ freq: 660, type: 'triangle', dur: 0.12, vol: 0.15, delay: 0.04 });
+      tone({ freq: 990, type: 'triangle', dur: 0.16, vol: 0.12, delay: 0.1 });
+    },
     // Card flip "whoosh"
     flip() {
       noise({ dur: 0.08, vol: 0.18, freq: 2500 });
