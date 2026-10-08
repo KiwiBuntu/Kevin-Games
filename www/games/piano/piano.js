@@ -8,14 +8,14 @@
 
   // Low to high: C D E F G A B C. Bigger animals get the lower notes.
   const KEYS = [
-    { freq: 261.63, colour: '#ff4d4d', animal: '🐮', noise: 'Moo!' },
-    { freq: 293.66, colour: '#ff9f1c', animal: '🐷', noise: 'Oink!' },
-    { freq: 329.63, colour: '#ffd60a', animal: '🐑', noise: 'Baa!' },
-    { freq: 349.23, colour: '#8ac926', animal: '🐶', noise: 'Woof!' },
-    { freq: 392.0, colour: '#2ec4b6', animal: '🦆', noise: 'Quack!' },
-    { freq: 440.0, colour: '#3a86ff', animal: '🐱', noise: 'Meow!' },
-    { freq: 493.88, colour: '#8338ec', animal: '🐸', noise: 'Ribbit!' },
-    { freq: 523.25, colour: '#ff5fa2', animal: '🐭', noise: 'Squeak!' },
+    { freq: 261.63, colour: '#ff4d4d', animal: '🐮', sound: 'cow', noise: 'Moo!' },
+    { freq: 293.66, colour: '#ff9f1c', animal: '🐷', sound: 'pig', noise: 'Oink!' },
+    { freq: 329.63, colour: '#ffd60a', animal: '🐑', sound: 'sheep', noise: 'Baa!' },
+    { freq: 349.23, colour: '#8ac926', animal: '🐶', sound: 'dog', noise: 'Woof!' },
+    { freq: 392.0, colour: '#2ec4b6', animal: '🦆', sound: 'duck', noise: 'Quack!' },
+    { freq: 440.0, colour: '#3a86ff', animal: '🐱', sound: 'cat', noise: 'Meow!' },
+    { freq: 493.88, colour: '#8338ec', animal: '🐸', sound: 'frog', noise: 'Ribbit!' },
+    { freq: 523.25, colour: '#ff5fa2', animal: '🐭', sound: 'mouse', noise: 'Squeak!' },
   ];
 
   // Songs as key numbers (0 = low C … 7 = high C).
@@ -25,7 +25,13 @@
     { icon: '🚣', name: 'Row row row your boat', notes: [0, 0, 0, 1, 2, 2, 1, 2, 3, 4, 7, 7, 7, 4, 4, 4, 2, 2, 2, 0, 0, 0, 4, 3, 2, 1, 0] },
   ];
 
-  let animalMode = false;
+  // 🎵 notes → 🐮 real animal recordings → 🗣️ the phone's voice at a different pitch for each bar
+  const MODES = ['🎵', '🐮', '🗣️'];
+  let mode = 0;
+  try { mode = Number(localStorage.getItem('kg-piano-mode')) || 0; } catch (e) {}
+  if (!MODES[mode]) mode = 0;
+  const clips = {};
+  KEYS.forEach(k => Sound.loadClip(`sounds/${k.sound}.mp3`).then(b => { clips[k.sound] = b; }));
   let songIdx = -1; // -1 = free play
   let step = 0;
   let listening = false;
@@ -44,14 +50,17 @@
   function play(i, fromSong) {
     const k = KEYS[i], el = els[i];
     Sound.note(k.freq);
+    if (mode === 1) Sound.clip(clips[k.sound]);
     el.classList.remove('on');
     void el.offsetWidth;
     el.classList.add('on');
     clearTimeout(el.offT);
     el.offT = setTimeout(() => el.classList.remove('on'), 180);
-    if (animalMode) {
+    if (mode === 2) {
       // Each animal speaks at its own pitch: low cow, squeaky mouse.
       Sound.say(k.noise, { pitch: 0.4 + i * 0.22, rate: 1.1 });
+    }
+    if (mode) {
       el.querySelector('.bubble').textContent = k.noise;
     } else {
       el.querySelector('.bubble').textContent = '♪';
@@ -122,8 +131,9 @@
   // ---------- buttons
   modeBtn.addEventListener('click', () => {
     Sound.unlock();
-    animalMode = !animalMode;
-    modeBtn.textContent = animalMode ? '🐮' : '🎵';
+    mode = (mode + 1) % MODES.length;
+    try { localStorage.setItem('kg-piano-mode', String(mode)); } catch (e) {}
+    modeBtn.textContent = MODES[mode];
     Sound.pop();
   });
   songBtn.addEventListener('click', () => {
@@ -143,5 +153,6 @@
   // Handy for poking at the game from the browser console.
   window.animalPiano = { get step() { return step; }, get songIdx() { return songIdx; }, SONGS };
 
+  modeBtn.textContent = MODES[mode];
   Sound.intro('Tap the bars to make music! Press the animal button to hear the animals.');
 })();

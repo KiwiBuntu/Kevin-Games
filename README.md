@@ -44,3 +44,8 @@ New games need their files added to the `FILES` list in `sw.js` and a tile in `w
 ## Game ideas
 
 See [GAME-IDEAS.md](GAME-IDEAS.md).
+
+## Credits
+
+Animal sounds in Animal Piano are CC0 recordings from [BigSoundBank](https://bigsoundbank.com) — details in `www/games/piano/sounds/CREDITS.md`.
+Saved paintings stay on the device they were made on (browser storage); use 📤 in the gallery to keep a copy in Photos.

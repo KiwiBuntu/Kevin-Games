@@ -114,6 +114,25 @@ const Sound = (() => {
       const scale = [523, 587, 659, 784, 880, 1047, 1175, 1319];
       tone({ freq: scale[n % scale.length], type: 'sine', dur: 0.07, vol: 0.09 });
     },
+    // Load a recorded sound file so it can be played instantly later.
+    loadClip(url) {
+      const c = ac();
+      if (!c) return Promise.resolve(null);
+      return fetch(url)
+        .then(r => r.arrayBuffer())
+        .then(b => new Promise((res, rej) => c.decodeAudioData(b, res, rej)))
+        .catch(() => null);
+    },
+    clip(buffer, vol = 1) {
+      const c = ac();
+      if (!c || muted || !buffer) return;
+      const src = c.createBufferSource();
+      const g = c.createGain();
+      g.gain.value = vol;
+      src.buffer = buffer;
+      src.connect(g).connect(master);
+      src.start();
+    },
     // Xylophone note
     note(freq) {
       tone({ freq, type: 'triangle', dur: 0.9, vol: 0.26 });

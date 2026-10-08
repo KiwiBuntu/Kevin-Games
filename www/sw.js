@@ -1,6 +1,6 @@
 // Offline support: serve from cache straight away, refresh the cache in the background.
 // Bump VERSION whenever files are added so phones pick up the new list.
-const VERSION = 'kg-v9';
+const VERSION = 'kg-v10';
 const FILES = [
   './',
   './index.html',
@@ -26,6 +26,14 @@ const FILES = [
   './games/jigsaw/jigsaw.js',
   './games/piano/index.html',
   './games/piano/piano.js',
+  './games/piano/sounds/cow.mp3',
+  './games/piano/sounds/pig.mp3',
+  './games/piano/sounds/sheep.mp3',
+  './games/piano/sounds/dog.mp3',
+  './games/piano/sounds/duck.mp3',
+  './games/piano/sounds/cat.mp3',
+  './games/piano/sounds/frog.mp3',
+  './games/piano/sounds/mouse.mp3',
   './games/maze/index.html',
   './games/maze/maze.js',
   './games/shapes/index.html',

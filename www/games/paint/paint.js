@@ -21,6 +21,8 @@
   let lineLayer;            // the black outlines (colouring mode)
   let labels = null;        // which area each pixel belongs to
   let areaSize = [];
+  let areaFirst = [];       // one pixel inside each area
+  let currentId = null;     // gallery id of the painting on screen, once saved
   let filled = new Set();
   let background = -1;
   let cheered = false;
@@ -63,6 +65,7 @@
     paintCtx.fillRect(0, 0, R, R);
     filled = new Set();
     cheered = false;
+    currentId = null;
     labels = null;
     lineLayer = null;
     if (!drawing) {
@@ -90,6 +93,7 @@
     for (let i = 0; i < n; i++) wall[i] = px[i * 4 + 3] > 100 ? 1 : 0;
     labels = new Int32Array(n).fill(-1);
     areaSize = [];
+    areaFirst = [];
     const stack = new Int32Array(n);
     for (let start = 0; start < n; start++) {
       if (wall[start] || labels[start] !== -1) continue;
@@ -112,6 +116,7 @@
         if (i < n - R) visit(i + R);
       }
       areaSize.push(count);
+      areaFirst.push(start);
     }
     background = labels[2 * R + 2];
   }
@@ -163,7 +168,7 @@
   }
 
   // Cheer once every part of the picture (not the background) has a colour.
-  function checkDone() {
+  function checkDone(quiet) {
     if (cheered) return;
     const big = R * R * 0.0008;
     for (let id = 0; id < areaSize.length; id++) {
@@ -171,6 +176,7 @@
       if (!filled.has(id)) return;
     }
     cheered = true;
+    if (quiet) return;
     Sound.cheer();
     Celebrate.burst();
     setTimeout(() => Sound.say(`Beautiful! ${Sound.praise()}`), 900);
@@ -221,7 +227,143 @@
   canvas.addEventListener('pointerup', lift);
   canvas.addEventListener('pointercancel', lift);
 
+  // ---------- saving paintings (kept on this device in IndexedDB)
+  const DB = (() => {
+    let dbp = null;
+    const open = () => dbp || (dbp = new Promise((res, rej) => {
+      const r = indexedDB.open('kg-paint', 1);
+      r.onupgradeneeded = () => r.result.createObjectStore('art', { keyPath: 'id' });
+      r.onsuccess = () => res(r.result);
+      r.onerror = () => rej(r.error);
+    }));
+    const run = (mode, fn) => open().then(db => new Promise((res, rej) => {
+      const t = db.transaction('art', mode);
+      const req = fn(t.objectStore('art'));
+      t.oncomplete = () => res(req && req.result);
+      t.onerror = () => rej(t.error);
+    }));
+    return {
+      all: () => run('readonly', st => st.getAll()),
+      put: item => run('readwrite', st => st.put(item)),
+      del: id => run('readwrite', st => st.delete(id)),
+    };
+  })();
+
+  const toast = document.getElementById('toast');
+  function showToast(html) {
+    toast.innerHTML = html;
+    toast.classList.add('show');
+    clearTimeout(toast.t);
+    toast.t = setTimeout(() => toast.classList.remove('show'), 1400);
+  }
+
+  const blobOf = (c, q) => new Promise(res => c.toBlob(res, 'image/jpeg', q));
+
+  async function save() {
+    Sound.unlock();
+    try {
+      const thumb = document.createElement('canvas');
+      thumb.width = thumb.height = 300;
+      thumb.getContext('2d').drawImage(canvas, 0, 0, 300, 300);
+      const item = {
+        id: currentId || Date.now(),
+        mode: drawing ? 'draw' : 'colour',
+        picIdx,
+        saved: Date.now(),
+        full: await blobOf(canvas, 0.9),     // what you see, for sharing
+        paint: await blobOf(paintLayer, 0.92), // just the colours, to carry on painting
+        thumb: thumb.toDataURL('image/jpeg', 0.8),
+      };
+      await DB.put(item);
+      currentId = item.id;
+      Sound.snap();
+      Sound.say('Saved!');
+      showToast('Saved! <span>🖼️</span>');
+    } catch (e) {
+      Sound.nope();
+      showToast('<span>😕</span>');
+    }
+  }
+
+  // Put a saved painting back on the page so he can keep going.
+  async function load(item) {
+    drawing = item.mode === 'draw';
+    picIdx = item.picIdx;
+    newPage();
+    currentId = item.id;
+    const bmp = await createImageBitmap(item.paint);
+    paintCtx.drawImage(bmp, 0, 0, R, R);
+    render();
+    if (!drawing) {
+      const d = paintCtx.getImageData(0, 0, R, R).data;
+      areaFirst.forEach((p, id) => {
+        if (d[p * 4] < 240 || d[p * 4 + 1] < 240 || d[p * 4 + 2] < 240) filled.add(id);
+      });
+      checkDone(true);
+    }
+  }
+
+  // Send to Photos / WhatsApp etc. where the phone allows it, otherwise download.
+  async function share(item) {
+    const file = new File([item.full], `kevins-painting-${new Date(item.saved).toISOString().slice(0, 10)}.jpg`, { type: 'image/jpeg' });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      try { await navigator.share({ files: [file], title: "Kevin's painting" }); } catch (e) {}
+      return;
+    }
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(file);
+    a.download = file.name;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  }
+
+  const gallery = document.getElementById('gallery');
+  const grid = gallery.querySelector('.grid');
+
+  async function openGallery() {
+    Sound.unlock();
+    Sound.pop();
+    gallery.hidden = false;
+    grid.innerHTML = '';
+    let items = [];
+    try { items = await DB.all(); } catch (e) {}
+    items.sort((a, b) => b.saved - a.saved);
+    if (!items.length) {
+      grid.innerHTML = '<div class="empty">🎨</div>';
+      return;
+    }
+    for (const item of items) {
+      const card = document.createElement('div');
+      card.className = 'art';
+      card.innerHTML = `<img alt="Painting"><div class="row">
+        <button class="share" aria-label="Save to phone or share">📤</button>
+        <button class="del" aria-label="Throw away">🗑️</button></div>`;
+      card.querySelector('img').src = item.thumb;
+      card.querySelector('img').addEventListener('click', () => { Sound.pop(); gallery.hidden = true; load(item); });
+      card.querySelector('.share').addEventListener('click', () => share(item));
+      const del = card.querySelector('.del');
+      // Two taps to throw a painting away, so it doesn't happen by accident.
+      del.addEventListener('click', async () => {
+        if (!del.classList.contains('armed')) {
+          del.classList.add('armed');
+          Sound.boing();
+          setTimeout(() => del.classList.remove('armed'), 2500);
+          return;
+        }
+        await DB.del(item.id);
+        if (currentId === item.id) currentId = null;
+        Sound.pop();
+        card.remove();
+        if (!grid.children.length) grid.innerHTML = '<div class="empty">🎨</div>';
+      });
+      grid.appendChild(card);
+    }
+  }
+
   // ---------- buttons
+  document.getElementById('save').addEventListener('click', save);
+  document.getElementById('open-gallery').addEventListener('click', openGallery);
+  document.getElementById('close-gallery').addEventListener('click', () => { Sound.pop(); gallery.hidden = true; });
   modeBtn.addEventListener('click', () => {
     Sound.unlock();
     Sound.pop();
