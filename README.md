@@ -15,10 +15,10 @@ www/                    ← upload this folder to the web server
 ## Test locally
 
 ```
-cd www && php -S 0.0.0.0:8080
+cd www && php -S 0.0.0.0:8081
 ```
 
-Then open http://localhost:8080 (or http://<this-machine's-ip>:8080 from the tablet on the same Wi-Fi).
+Then open http://localhost:8081 (or http://<this-machine's-ip>:8081 from the tablet on the same Wi-Fi).
 
 ## Install on Android
 
