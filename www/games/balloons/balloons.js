@@ -18,6 +18,10 @@
   // Words for the spelling mode — add more names here! The first word is always the first in this list.
   const SPELL_WORDS = [
     ['KEVIN', '👦', 'Kevin'], ['GRANNY', '👵', 'Granny'], ['GRANDPA', '👴', 'Grandpa'],
+    ['MUM', '👩', 'Mum'], ['DAD', '👨', 'Dad'],
+    // Sight words (picture is optional — leave it '' when there isn't a good one)
+    ['THE', '', 'the'], ['AND', '', 'and'], ['YOU', '👉', 'you'], ['SEE', '👀', 'see'], ['CAN', '', 'can'],
+    ['FOR', '', 'for'], ['NOT', '', 'not'], ['ONE', '1️⃣', 'one'], ['BIG', '🐘', 'big'], ['OUT', '', 'out'],
     ['CAT', '🐱', 'Cat'], ['DOG', '🐶', 'Dog'], ['PIG', '🐷', 'Pig'], ['COW', '🐮', 'Cow'],
     ['HEN', '🐔', 'Hen'], ['BEE', '🐝', 'Bee'], ['BUS', '🚌', 'Bus'], ['CAR', '🚗', 'Car'],
     ['SUN', '☀️', 'Sun'], ['HAT', '🎩', 'Hat'], ['BED', '🛏️', 'Bed'], ['FISH', '🐟', 'Fish'],
@@ -137,6 +141,7 @@
     spell = { text: pick[0], pic: pick[1], name: pick[2], idx: 0 };
     spellPause = false;
     spellPic.textContent = spell.pic;
+    spellPic.hidden = !spell.pic;
     spellTiles.innerHTML = '';
     for (const ch of spell.text) {
       const t = document.createElement('span');
@@ -146,7 +151,7 @@
     }
     spellEl.style.setProperty('--n', spell.text.length);
     showSpell();
-    setTimeout(() => Sound.say(`Can you spell ${spell.name}?`), 400);
+    setTimeout(() => Sound.say(`Can you spell, ${spell.name}?`), 400);
   }
 
   function showSpell() {

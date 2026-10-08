@@ -44,7 +44,7 @@
       box-shadow: 0 6px 0 var(--ink); cursor: pointer;
       --ts: min(64px, calc((100vw - 170px) / var(--n, 5)));
     }
-    #spell[hidden] { display: none; }
+    #spell[hidden], #spell .pic[hidden] { display: none; }
     #spell .pic, #spell .ear { font-family: var(--emoji); font-size: calc(var(--ts) * 0.9); line-height: 1; }
     #spell .ear { font-size: calc(var(--ts) * 0.5); }
     @media (max-width: 480px) { #spell .ear { display: none; } }
