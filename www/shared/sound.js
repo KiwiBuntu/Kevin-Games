@@ -144,7 +144,13 @@ const Sound = (() => {
       tone({ freq: 180, to: 420, type: 'sine', dur: 0.12, vol: 0.18, vibrato: 18 });
       tone({ freq: 420, to: 200, type: 'sine', dur: 0.18, vol: 0.14, delay: 0.12, vibrato: 18 });
     },
-    // Car horn "beep beep"
+    // Engine "vroom" as a car drives away
+    vroom() {
+      tone({ freq: 70, to: 220, type: 'sawtooth', dur: 0.6, vol: 0.08 });
+      tone({ freq: 140, to: 440, type: 'square', dur: 0.5, vol: 0.03 });
+      noise({ dur: 0.5, vol: 0.12, freq: 400 });
+    },
+        // Car horn "beep beep"
     honk() {
       for (const d of [0, 0.22]) {
         tone({ freq: 392, type: 'square', dur: 0.16, vol: 0.08, delay: d });

@@ -11,6 +11,7 @@
 - [x] **Mazes** — drag the car / mouse / puppy / rocket / bee through a hedge maze to its goal; three sizes; hint shows the way.
 - [x] **Animal Piano** — rainbow xylophone; mode button cycles 🎵 notes / 🐮 real animal recordings (CC0, see `www/games/piano/sounds/CREDITS.md`) / 🗣️ silly voices; follow-the-glowing-bar songs (Twinkle Twinkle, Mary Had a Little Lamb, Row Your Boat).
 - [x] **Paint** — tap-to-fill colouring pictures (7) or free drawing with a rainbow brush; cheer when a picture is fully coloured. 💾 saves to a 🖼️ gallery on the device (tap to keep painting, 📤 share/save to phone, 🗑️ twice to delete).
+- [x] **Parking Garage** — slide cars back and forth so each drives out of the door matching its colour; every car that leaves makes room; tap to drive toward the door, drag to slide; hint, undo; puzzles checked by a solver.
 
 ## Maybe later
 - More songs for the piano, more jigsaw scenes and dot-to-dot pictures

@@ -18,7 +18,8 @@ www/                    ← upload this folder to the web server
 ├── games/dots/         ← Dot to Dot
 ├── games/maze/         ← Mazes
 ├── games/piano/        ← Animal Piano
-└── games/paint/        ← Paint & Colour
+├── games/paint/        ← Paint & Colour
+└── games/garage/       ← Parking Garage
 ```
 
 ## Test locally
