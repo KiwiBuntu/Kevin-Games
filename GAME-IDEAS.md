@@ -2,7 +2,7 @@
 
 ## Done
 - [x] **Train Yard** — tap trains to drive them out of the yard; blocked trains go red and beep. No lives, play until clear.
-- [x] **Balloon Pop** — tap rising balloons; colours / numbers / letters / animals spoken aloud; rainbow star balloons; 20 pops to win.
+- [x] **Balloon Pop** — tap rising balloons; colours / numbers / letters / animals spoken aloud; rainbow star balloons; 20 pops to win. ✏️ Spelling mode: pop the letters of a spoken word (KEVIN, GRANNY, GRANDPA, CAT…); 3 words to win. Word list is at the top of `www/games/balloons/balloons.js`.
 - [x] **Memory Match** — flip cards to find pairs; 3 / 6 / 10 pairs; animals, vehicles, food, sea creatures; names spoken on a match.
 
 ## To do

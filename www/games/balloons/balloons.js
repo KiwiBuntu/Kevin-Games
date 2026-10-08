@@ -3,6 +3,9 @@
   const canvas = document.getElementById('board');
   const ctx = canvas.getContext('2d');
   const fillEl = document.getElementById('fill');
+  const spellEl = document.getElementById('spell');
+  const spellPic = spellEl.querySelector('.pic');
+  const spellTiles = spellEl.querySelector('.tiles');
   const modeBtn = document.getElementById('mode');
   const speedBtn = document.getElementById('speed');
   const muteBtn = document.getElementById('mute');
@@ -10,6 +13,18 @@
   const EMOJI_FONT = '"Noto Color Emoji", "Apple Color Emoji", "Segoe UI Emoji", sans-serif';
   const TEXT_FONT = '"Fredoka", "Comic Sans MS", sans-serif';
   const TARGET = 20; // pops needed for the Hooray screen
+  const SPELL_TARGET = 3; // words to spell for the Hooray screen
+
+  // Words for the spelling mode — add more names here! The first word is always the first in this list.
+  const SPELL_WORDS = [
+    ['KEVIN', '👦', 'Kevin'], ['GRANNY', '👵', 'Granny'], ['GRANDPA', '👴', 'Grandpa'],
+    ['CAT', '🐱', 'Cat'], ['DOG', '🐶', 'Dog'], ['PIG', '🐷', 'Pig'], ['COW', '🐮', 'Cow'],
+    ['HEN', '🐔', 'Hen'], ['BEE', '🐝', 'Bee'], ['BUS', '🚌', 'Bus'], ['CAR', '🚗', 'Car'],
+    ['SUN', '☀️', 'Sun'], ['HAT', '🎩', 'Hat'], ['BED', '🛏️', 'Bed'], ['FISH', '🐟', 'Fish'],
+    ['DUCK', '🦆', 'Duck'], ['FROG', '🐸', 'Frog'], ['TRAIN', '🚂', 'Train'], ['BOAT', '⛵', 'Boat'],
+    ['STAR', '⭐', 'Star'], ['MOON', '🌙', 'Moon'], ['CAKE', '🎂', 'Cake'], ['BALL', '⚽', 'Ball'],
+    ['TREE', '🌳', 'Tree'], ['APPLE', '🍎', 'Apple'], ['HOUSE', '🏠', 'House'],
+  ];
 
   const COLOURS = [
     ['#ff4d4d', 'Red'], ['#ff9f1c', 'Orange'], ['#ffd60a', 'Yellow'], ['#8ac926', 'Green'],
@@ -28,6 +43,7 @@
     { icon: '🔢', make: () => { const n = randInt(1, 10); return { label: String(n), say: NUMBERS[n - 1] }; } },
     { icon: '🔤', make: () => { const l = LETTERS[randInt(0, 25)]; return { label: l, say: l }; } },
     { icon: '🐶', make: () => { const [e, name] = ANIMALS[randInt(0, ANIMALS.length - 1)]; return { label: e, say: name, emoji: true }; } },
+    { icon: '✏️', spell: true, make: () => { const l = spellLetter(); return { label: l, say: l }; } },
   ];
   const SPEEDS = {
     slow: { icon: '🐢', rise: 0.11, every: 1.0, max: 5 },
@@ -51,6 +67,12 @@
   let spawnT = 0;
   let done = false;
   let time = 0;
+  // Spelling mode
+  let spell = null; // { text, pic, name, idx }
+  let spellBag = [];
+  let wordsSpelled = 0;
+  let spellPause = false;
+  let firstWord = true;
   const view = { w: 0, h: 0, r: 50 };
 
   const randInt = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
@@ -86,13 +108,101 @@
     sinceSpecial = 0;
     spawnT = 0;
     done = false;
+    wordsSpelled = 0;
+    spellPause = false;
+    spell = null;
+    spellEl.hidden = !MODES[modeIdx].spell;
+    if (MODES[modeIdx].spell) nextWord();
     showProgress();
     modeBtn.textContent = MODES[modeIdx].icon;
     speedBtn.textContent = SPEEDS[speed].icon;
   }
 
   function showProgress() {
-    fillEl.style.width = `${(popped / TARGET) * 100}%`;
+    const frac = MODES[modeIdx].spell ? wordsSpelled / SPELL_TARGET : popped / TARGET;
+    fillEl.style.width = `${frac * 100}%`;
+  }
+
+  // ---------- spelling mode
+  function nextWord() {
+    let pick;
+    if (firstWord) {
+      pick = SPELL_WORDS[0];
+      firstWord = false;
+    } else {
+      if (!spellBag.length) spellBag = SPELL_WORDS.slice().sort(() => Math.random() - 0.5);
+      pick = spellBag.pop();
+      if (spell && pick[0] === spell.text && spellBag.length) pick = spellBag.pop();
+    }
+    spell = { text: pick[0], pic: pick[1], name: pick[2], idx: 0 };
+    spellPause = false;
+    spellPic.textContent = spell.pic;
+    spellTiles.innerHTML = '';
+    for (const ch of spell.text) {
+      const t = document.createElement('span');
+      t.className = 'tile';
+      t.textContent = ch;
+      spellTiles.appendChild(t);
+    }
+    spellEl.style.setProperty('--n', spell.text.length);
+    showSpell();
+    setTimeout(() => Sound.say(`Can you spell ${spell.name}?`), 400);
+  }
+
+  function showSpell() {
+    [...spellTiles.children].forEach((t, i) => {
+      t.classList.toggle('done', i < spell.idx);
+      t.classList.toggle('next', i === spell.idx && !spellPause);
+    });
+  }
+
+  // The letter on a new balloon: make sure the one he needs is always about.
+  function spellLetter() {
+    if (!spell || spellPause) return LETTERS[randInt(0, 25)];
+    const need = spell.text[spell.idx];
+    const showing = balloons.some(b => b.label === need && b.y > view.h * 0.3);
+    if (!showing || Math.random() < 0.35) return need;
+    // Other letters: half from the word itself, half from the alphabet.
+    const pool = Math.random() < 0.5 ? spell.text : LETTERS;
+    let l = need;
+    for (let i = 0; i < 10 && l === need; i++) l = pool[randInt(0, pool.length - 1)];
+    return l;
+  }
+
+  function spellPop(b) {
+    const need = spell.text[spell.idx];
+    if (spellPause || b.label !== need) {
+      setTimeout(() => Sound.say(b.say), 120);
+      if (!spellPause) {
+        // Wiggle the letter he is looking for.
+        const t = spellTiles.children[spell.idx];
+        t.classList.remove('hint');
+        void t.offsetWidth;
+        t.classList.add('hint');
+      }
+      return;
+    }
+    spell.idx++;
+    Sound.sparkle();
+    setTimeout(() => Sound.say(b.say), 120);
+    if (spell.idx < spell.text.length) { showSpell(); return; }
+    // Word finished!
+    spellPause = true;
+    showSpell();
+    spellEl.classList.add('yay');
+    wordsSpelled++;
+    showProgress();
+    setTimeout(() => {
+      Sound.say(`${spell.name}! Well done!`);
+      Celebrate.burst(80);
+    }, 600);
+    setTimeout(() => {
+      spellEl.classList.remove('yay');
+      if (wordsSpelled >= SPELL_TARGET) {
+        done = true;
+        Win.show({ picture: '✏️🎉', again: newGame });
+      } else nextWord();
+    }, 3000);
   }
 
   function spawn() {
@@ -105,7 +215,7 @@
       if (gap > bestGap) { bestGap = gap; x = cx; }
     }
     sinceSpecial++;
-    const special = sinceSpecial > 6 && Math.random() < 0.2;
+    const special = !MODES[modeIdx].spell && sinceSpecial > 6 && Math.random() < 0.2;
     if (special) sinceSpecial = 0;
     const [color, colourName] = COLOURS[randInt(0, COLOURS.length - 1)];
     const content = special ? { label: '⭐', say: 'Wow!', emoji: true } : MODES[modeIdx].make();
@@ -152,6 +262,10 @@
       text: b.label && !b.special ? b.label : b.colourName, emoji: b.emoji && !b.special,
       x: b.x, y: b.y, color: b.special ? '#ff5fa2' : b.color, life: 1,
     });
+    if (MODES[modeIdx].spell) {
+      if (!done) spellPop(b);
+      return;
+    }
     setTimeout(() => Sound.say(b.say), 120);
     if (b.special) {
       Celebrate.burst(60);
@@ -318,12 +432,13 @@
 
   // ---------- buttons
   canvas.addEventListener('pointerdown', tap);
+  spellEl.addEventListener('click', () => { Sound.unlock(); if (spell) Sound.say(spell.name); });
   modeBtn.addEventListener('click', () => {
     Sound.unlock();
     Sound.pop();
     modeIdx = (modeIdx + 1) % MODES.length;
     try { localStorage.setItem('kg-balloons-mode', String(modeIdx)); } catch (e) {}
-    modeBtn.textContent = MODES[modeIdx].icon;
+    newGame();
   });
   speedBtn.addEventListener('click', () => {
     Sound.unlock();
@@ -337,7 +452,7 @@
   showMute();
   window.addEventListener('resize', layout);
   // Handy for poking at the game from the browser console.
-  window.balloonPop = { get balloons() { return balloons; }, get popped() { return popped; } };
+  window.balloonPop = { get balloons() { return balloons; }, get popped() { return popped; }, get spell() { return spell; } };
 
   layout();
   newGame();
