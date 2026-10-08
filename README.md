@@ -11,7 +11,8 @@ www/                    ← upload this folder to the web server
 ├── shared/             ← styles, sound effects, confetti, "Hooray!" screen
 ├── games/trains/       ← Train Yard
 ├── games/memory/       ← Memory Match
-└── games/balloons/     ← Balloon Pop
+├── games/balloons/     ← Balloon Pop
+└── games/colours/      ← Connect the Colours
 ```
 
 ## Test locally

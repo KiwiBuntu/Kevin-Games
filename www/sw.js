@@ -1,6 +1,6 @@
 // Offline support: serve from cache straight away, refresh the cache in the background.
 // Bump VERSION whenever files are added so phones pick up the new list.
-const VERSION = 'kg-v5';
+const VERSION = 'kg-v6';
 const FILES = [
   './',
   './index.html',
@@ -18,6 +18,9 @@ const FILES = [
   './games/memory/memory.js',
   './games/balloons/index.html',
   './games/balloons/balloons.js',
+  './games/colours/index.html',
+  './games/colours/puzzle.js',
+  './games/colours/colours.js',
 ];
 
 self.addEventListener('install', e => {

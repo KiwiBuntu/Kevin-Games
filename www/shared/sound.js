@@ -93,6 +93,11 @@ const Sound = (() => {
       noise({ dur: 0.12, vol: 0.5, freq: 1800 });
       tone({ freq: 900 + Math.random() * 300, to: 180, type: 'triangle', dur: 0.12, vol: 0.18 });
     },
+    // Little rising note as a line grows one square
+    step(n) {
+      const scale = [523, 587, 659, 784, 880, 1047, 1175, 1319];
+      tone({ freq: scale[n % scale.length], type: 'sine', dur: 0.07, vol: 0.09 });
+    },
     // Card flip "whoosh"
     flip() {
       noise({ dur: 0.08, vol: 0.18, freq: 2500 });
