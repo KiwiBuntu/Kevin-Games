@@ -8,7 +8,7 @@ Ad-free, offline-friendly games for a 5 year old, built with plain HTML + JavaSc
 www/                    ← upload this folder to the web server
 ├── index.html          ← game picker
 ├── manifest.json, sw.js, icons/   ← "Add to Home Screen" app + offline support
-├── shared/             ← styles, sound effects, confetti, "Hooray!" screen
+├── shared/             ← styles, sound effects, confetti, "Hooray!" screen, grown-up sum lock
 ├── games/trains/       ← Train Yard
 ├── games/memory/       ← Memory Match
 ├── games/balloons/     ← Balloon Pop
@@ -20,7 +20,8 @@ www/                    ← upload this folder to the web server
 ├── games/piano/        ← Animal Piano
 ├── games/paint/        ← Paint & Colour
 ├── games/garage/       ← Parking Garage
-└── games/read/         ← Read Along (stories read aloud)
+├── games/read/         ← Read Along (stories read aloud)
+└── games/tower/        ← Number Tower
 ```
 
 ## Test locally

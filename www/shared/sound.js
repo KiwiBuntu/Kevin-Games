@@ -157,6 +157,16 @@ const Sound = (() => {
         tone({ freq: 494, type: 'square', dur: 0.16, vol: 0.06, delay: d });
       }
     },
+    // Web shooting out: "thwip!"
+    thwip() {
+      noise({ dur: 0.12, vol: 0.25, freq: 4000 });
+      tone({ freq: 900, to: 2600, type: 'sine', dur: 0.12, vol: 0.1 });
+    },
+    // Swinging through the air
+    whoosh() {
+      noise({ dur: 0.45, vol: 0.18, freq: 900 });
+      tone({ freq: 300, to: 700, type: 'sine', dur: 0.4, vol: 0.05 });
+    },
     // Jigsaw piece clicking into place
     snap() {
       tone({ freq: 1400, to: 900, type: 'square', dur: 0.04, vol: 0.06 });

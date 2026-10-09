@@ -65,11 +65,6 @@ body { display: flex; flex-direction: column; }
   background: #fff; border: 5px solid var(--ink); border-radius: 26px; box-shadow: 0 8px 0 var(--ink); padding: 20px;
 }
 .card { text-align: center; }
-.big-emoji { font-size: 50px; }
-.sum { font-size: 40px; font-weight: 700; margin: 8px 0 12px; }
-#gate-answer { font: inherit; font-size: 36px; width: 180px; text-align: center; border: 4px solid var(--ink); border-radius: 16px; padding: 6px; }
-#gate-answer.wrong { border-color: #ff4d4d; animation: shake 0.4s; }
-@keyframes shake { 25% { transform: translateX(-8px); } 75% { transform: translateX(8px); } }
 .row { display: flex; gap: 14px; justify-content: center; margin-top: 16px; }
 
 .panel { width: min(100%, 760px); max-height: 100%; overflow-y: auto; font-size: 18px; }

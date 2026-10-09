@@ -13,9 +13,9 @@
 - [x] **Paint** — tap-to-fill colouring pictures (7) or free drawing with a rainbow brush; cheer when a picture is fully coloured. 💾 saves to a 🖼️ gallery on the device (tap to keep painting, 📤 share/save to phone, 🗑️ twice to delete).
 - [x] **Parking Garage** — slide cars back and forth so each drives out of the door matching its colour; every car that leaves makes room; tap to drive toward the door, drag to slide; hint, undo; puzzles checked by a solver.
 - [x] **Read Along** — bookshelf of stories read aloud with the words lighting up; 🐢🚶🐇 speeds; tap a word to hear it; remembers his page; voice + speed saved per book. Grown-ups (behind a sum, answer 100–200) paste, type or load .txt/.md stories with light Markdown: `# Heading`, `**strong**`, `*soft*`, `---` new page. Books stay on the tablet.
+- [x] **Number Tower** — climb a tower by shooting a web to the right answer window (Super Kevin, Gecko Kid or Robo); no falling, wrong windows just go "boing"; milestones every 10 floors as the sky changes to clouds, sunset, night and space. Activities: Counting (keeps going), How many?, ➕ ➖ ✖️ ➗ and Mixed. Grown-ups (sum lock) choose which activities show, the biggest answer (10/20/50/100), 2 or 3 choices and picture help (dots).
 
 ## Maybe later
 - **Read Along: "Mum / Granny / Grandpa reads it"** — record a family member reading a book page by page, played back with the words highlighted. Must be able to **export/import the recordings** so nobody has to re-record.
 - Read Along: .epub import (public-domain books from Project Gutenberg / Standard Ebooks), backup export/import
-- **Number game** with simple sums
 - More songs for the piano, more jigsaw scenes and dot-to-dot pictures

@@ -449,36 +449,8 @@
   });
   window.addEventListener('resize', () => { if (!$('#reader').hidden) fitText(); });
 
-  // ---------- grown-ups: a sum to get in (answer between 100 and 200)
-  let answer = 0, tries = 0;
-  function newSum() {
-    const a = 50 + Math.floor(Math.random() * 50), b = 50 + Math.floor(Math.random() * 50);
-    answer = a + b;
-    $('.sum').textContent = `${a} + ${b} = ?`;
-    $('#gate-answer').value = '';
-  }
-  $('#grown-ups').addEventListener('click', () => {
-    Sound.unlock();
-    tries = 0;
-    newSum();
-    $('#gate').hidden = false;
-    setTimeout(() => $('#gate-answer').focus(), 50);
-  });
-  const checkSum = () => {
-    if (Number($('#gate-answer').value) === answer) {
-      $('#gate').hidden = true;
-      openAdmin();
-      return;
-    }
-    const inp = $('#gate-answer');
-    inp.classList.remove('wrong');
-    void inp.offsetWidth;
-    inp.classList.add('wrong');
-    if (++tries >= 2) { tries = 0; newSum(); }
-  };
-  $('#gate-ok').addEventListener('click', checkSum);
-  $('#gate-answer').addEventListener('keydown', e => { if (e.key === 'Enter') checkSum(); });
-  $('#gate-cancel').addEventListener('click', () => { $('#gate').hidden = true; });
+  // ---------- grown-ups: a sum to get in (shared/gate.js)
+  $('#grown-ups').addEventListener('click', () => { Sound.unlock(); Gate.ask(openAdmin); });
 
   // ---------- grown-ups: book list
   async function openAdmin() {
