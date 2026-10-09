@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#7fd3ff">
+  <title>Potion Sort</title>
+  <link rel="manifest" href="../../manifest.json">
+  <link rel="icon" href="../../icons/icon-192.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;700&display=swap">
+  <link rel="stylesheet" href="../../shared/style.css">
+  <style>
+    body { display: flex; flex-direction: column; background: linear-gradient(#5a3e8c, #2d1f4f 70%); }
+    .bar {
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
+      padding: max(10px, env(safe-area-inset-top)) 12px 10px;
+    }
+    .bar .group { display: flex; gap: 8px; align-items: center; }
+    .level-badge {
+      background: #fff; border: 4px solid var(--ink); border-radius: 20px; box-shadow: 0 4px 0 var(--ink);
+      padding: 2px 16px; font-size: 30px; font-weight: 700; display: flex; align-items: center; gap: 8px;
+    }
+    .lock { opacity: 0.5; font-size: 22px; }
+    #wand { width: 76px; height: 76px; font-size: 40px; border-radius: 24px; padding: 0; }
+    #wand:disabled { opacity: 0.4; }
+    #wand.glow { background: var(--sun); animation: wandglow 0.9s ease-in-out infinite; }
+    @keyframes wandglow {
+      0%, 100% { box-shadow: 0 5px 0 var(--ink), 0 0 0 0 rgba(255, 243, 107, 0.9); transform: rotate(-8deg); }
+      50% { box-shadow: 0 5px 0 var(--ink), 0 0 0 14px rgba(255, 243, 107, 0.9); transform: rotate(8deg); }
+    }
+    #spare { width: 76px; height: 76px; font-size: 34px; border-radius: 24px; padding: 0; background: #c9f7c2; animation: wandglow 0.9s ease-in-out infinite; }
+    #spare[hidden] { display: none; }
+    #stage { flex: 1; min-height: 0; position: relative; }
+    #lab { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; display: block; }
+
+    .sheet { position: fixed; inset: 0; z-index: 30; background: rgba(43, 45, 66, 0.55); display: flex; align-items: center; justify-content: center; padding: 16px; }
+    .sheet[hidden] { display: none; }
+    .panel {
+      background: #fff; border: 5px solid var(--ink); border-radius: 26px; box-shadow: 0 8px 0 var(--ink); padding: 20px;
+      width: min(100%, 520px); font-size: 18px;
+    }
+    .panel-head { display: flex; justify-content: space-between; align-items: center; }
+    .panel h2 { margin: 0; }
+    .panel h3 { margin: 18px 0 8px; }
+    .seg { display: flex; gap: 8px; }
+    .seg button { font: inherit; font-weight: 700; padding: 8px 18px; border-radius: 14px; border: 3px solid var(--ink); background: #f2f2f6; cursor: pointer; }
+    .seg button.on { background: var(--sun); }
+    .note { color: #666; font-size: 14px; margin: 6px 0; }
+    .btn.small { height: 44px; font-size: 18px; border-radius: 12px; font-family: var(--font); }
+    @media (max-width: 480px) {
+      .bar { flex-wrap: wrap; justify-content: center; }
+      #wand, #spare { width: 62px; height: 62px; font-size: 32px; }
+      .level-badge { font-size: 24px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="bar">
+    <div class="group">
+      <a class="btn round" href="../../index.html" aria-label="Home">🏠</a>
+      <div class="level-badge"><span class="emoji">🧪</span><span id="level">1</span></div>
+    </div>
+    <div class="group">
+      <button class="btn" id="spare" aria-label="Add a spare flask" hidden>+🧪</button>
+      <button class="btn" id="wand" aria-label="Undo">🪄</button>
+      <button class="btn round" id="restart" aria-label="Start this one again">🔄</button>
+      <button class="btn round" id="mute" aria-label="Sound on or off">🔊</button>
+      <button class="btn round lock" id="settings" aria-label="Grown-ups">🔒</button>
+    </div>
+  </div>
+  <div id="stage"><canvas id="lab"></canvas></div>
+
+  <div id="panel" class="sheet" hidden>
+    <div class="panel">
+      <div class="panel-head">
+        <h2>Potion Sort settings</h2>
+        <button class="btn round" id="panel-close" aria-label="Close">✖️</button>
+      </div>
+      <h3>Emergency spare flask</h3>
+      <div class="seg" id="t-spare"></div>
+      <p class="note">When he gets into a spot that can't be finished, a +🧪 button offers one extra empty flask for that level. With it off, the magic wand (undo) is the only help.</p>
+      <h3>Level</h3>
+      <p class="note" id="t-level"></p>
+      <button class="btn small" id="t-reset" type="button">↺ Start again from level 1</button>
+    </div>
+  </div>
+
+  <script src="../../shared/sound.js"></script>
+  <script src="../../shared/celebrate.js"></script>
+  <script src="../../shared/win.js"></script>
+  <script src="../../shared/gate.js"></script>
+  <script src="puzzle.js"></script>
+  <script src="potions.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) navigator.serviceWorker.register('../../sw.js').catch(() => {});
+  </script>
+</body>
+</html>

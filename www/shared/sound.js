@@ -157,6 +157,21 @@ const Sound = (() => {
         tone({ freq: 494, type: 'square', dur: 0.16, vol: 0.06, delay: d });
       }
     },
+    // Pouring: a bubbly glug-glug at a pitch that belongs to the colour
+    glug(colour) {
+      const base = [262, 294, 330, 392, 440, 523, 587, 659][colour % 8];
+      for (let i = 0; i < 4; i++) {
+        tone({ freq: base * (1 + i * 0.12), to: base * (1.4 + i * 0.12), type: 'sine', dur: 0.09, vol: 0.14, delay: i * 0.11 });
+        noise({ dur: 0.05, vol: 0.06, freq: 800, delay: i * 0.11 });
+      }
+    },
+    // Cork popping into a finished flask
+    cork() {
+      noise({ dur: 0.04, vol: 0.35, freq: 1800 });
+      tone({ freq: 500, to: 1100, type: 'sine', dur: 0.08, vol: 0.18 });
+      tone({ freq: 1047, type: 'triangle', dur: 0.3, vol: 0.12, delay: 0.1 });
+      tone({ freq: 1568, type: 'triangle', dur: 0.3, vol: 0.08, delay: 0.18 });
+    },
     // Blaster shot: "pew!"
     zap() {
       tone({ freq: 1500, to: 300, type: 'square', dur: 0.12, vol: 0.05 });
