@@ -1,6 +1,6 @@
 // Offline support: serve from cache straight away, refresh the cache in the background.
 // Bump VERSION whenever files are added so phones pick up the new list.
-const VERSION = 'kg-v20';
+const VERSION = 'kg-v21';
 const FILES = [
   './',
   './index.html',
@@ -52,6 +52,7 @@ const FILES = [
   './games/read/read.css',
   './games/read/story.js',
   './games/read/defaults.js',
+  './games/read/readings.js',
   './games/read/read.js',
   './games/tower/index.html',
   './games/tower/tower.css',

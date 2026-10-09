@@ -27,6 +27,7 @@
   <section id="reader" class="view" hidden>
     <div class="bar">
       <button class="btn round" id="to-shelf" aria-label="Back to the books">📚</button>
+      <button class="btn round who" id="who" aria-label="Who is reading?" hidden>🗣️</button>
       <div class="speeds">
         <button class="btn round" data-speed="slow" aria-label="Slow">🐢</button>
         <button class="btn round" data-speed="normal" aria-label="Normal">🚶</button>
@@ -51,7 +52,11 @@
         <h2>Books</h2>
         <button class="btn round" id="admin-close" aria-label="Close">✖️</button>
       </div>
-      <button class="btn wide" id="add-book">➕ New book</button>
+      <div class="row two">
+        <button class="btn wide" id="add-book">➕ New book</button>
+        <button class="btn wide" id="import-reading">📥 Import a reading</button>
+      </div>
+      <input type="file" id="import-input" accept=".json,application/json" hidden>
       <ul id="book-list"></ul>
       <h3>Word highlighting on this device</h3>
       <div class="row timing">
@@ -92,10 +97,47 @@ Use **big** for a strong word and *soft* for a gentle one.
 Leave a blank line between paragraphs.
 Put --- on its own line to start a new page."></textarea>
       </label>
+      <div class="field" id="f-readings">Family readings
+        <ul id="readings-list"></ul>
+        <button class="btn small" id="new-reading" type="button">🎙️ Record a new reading</button>
+        <p class="note" id="readings-note"></p>
+      </div>
       <div class="row">
         <button class="btn" id="f-delete" type="button">🗑️ Delete</button>
         <button class="btn" id="f-save" type="button">💾 Save</button>
       </div>
+    </div>
+  </div>
+
+  <!-- Grown-ups: who is recording? -->
+  <div id="reading-new" class="sheet" hidden>
+    <div class="panel small-panel">
+      <div class="panel-head">
+        <h2>Who's reading?</h2>
+        <button class="btn round" id="rn-close" aria-label="Close">✖️</button>
+      </div>
+      <label>Name <input id="rn-name" placeholder="e.g. Grandpa" maxlength="20"></label>
+      <div class="field">Face <div id="rn-face" class="picker"></div></div>
+      <div class="row"><button class="btn" id="rn-start" type="button">🎙️ Start recording</button></div>
+    </div>
+  </div>
+
+  <!-- Grown-ups: recording a book page by page -->
+  <div id="recorder" class="sheet" hidden>
+    <div class="rec-box">
+      <div class="rec-head">
+        <span class="emoji rec-face"></span><b class="rec-who"></b>
+        <button class="btn round" id="rec-close" aria-label="Finish">✔️</button>
+      </div>
+      <div class="rec-wrap"><article id="rec-page"></article></div>
+      <div class="rec-status"></div>
+      <div class="rec-controls">
+        <button class="btn big" id="rec-prev" aria-label="Page back">⬅️</button>
+        <button class="btn big" id="rec-listen" aria-label="Listen back">▶️</button>
+        <button class="btn huge rec-btn" id="rec-go" aria-label="Record this page"><span class="dot"></span></button>
+        <button class="btn big" id="rec-next" aria-label="Next page">➡️</button>
+      </div>
+      <div class="rec-dots"></div>
     </div>
   </div>
 
@@ -104,6 +146,7 @@ Put --- on its own line to start a new page."></textarea>
   <script src="../../shared/gate.js"></script>
   <script src="story.js"></script>
   <script src="defaults.js"></script>
+  <script src="readings.js"></script>
   <script src="read.js"></script>
   <script>
     if ('serviceWorker' in navigator) navigator.serviceWorker.register('../../sw.js').catch(() => {});

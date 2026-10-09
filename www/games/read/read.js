@@ -93,6 +93,8 @@
     }
     store.set('kg-read-defaults', JSON.stringify(seeded));
     books.sort((a, b) => (b.opened || b.added) - (a.opened || a.added));
+    const readers = {};
+    for (const r of await Readings.all()) (readers[r.bookId] = readers[r.bookId] || []).push(r.face);
     const shelf = $('.books');
     shelf.innerHTML = '';
     for (const b of books) {
@@ -101,7 +103,8 @@
       el.style.setProperty('--c', b.colour);
       const pages = Story.parse(b.text, b.title).pages.length;
       const done = b.finished ? 1 : pages > 1 ? (b.page || 0) / pages : 0;
-      el.innerHTML = `<div class="cover"></div><div class="name"></div><div class="progress"><i style="width:${Math.round(done * 100)}%"></i></div>`;
+      el.innerHTML = `<div class="faces"></div><div class="cover"></div><div class="name"></div><div class="progress"><i style="width:${Math.round(done * 100)}%"></i></div>`;
+      el.querySelector('.faces').textContent = (readers[b.id] || []).join('');
       el.querySelector('.cover').textContent = b.emoji;
       el.querySelector('.name').textContent = b.title;
       el.addEventListener('click', () => { Sound.unlock(); Sound.pop(); openBook(b); });
@@ -164,8 +167,37 @@
   }
   let timers = [];
 
+  // ---------- family readings: who reads this book?
+  let bookReadings = [];
+  let reader = null;           // a Readings entry, or null for the computer voice
+  const audio = new Audio();
+  const audioURLs = new Map(); // blob -> object URL
+  const AUDIO_SPEED = { slow: 0.8, normal: 1, fast: 1.2 };
+
+  async function loadReaders() {
+    bookReadings = await Readings.forBook(book.id);
+    reader = book.reader === 'voice' ? null : bookReadings.find(r => r.id === book.reader) || bookReadings[0] || null;
+    const who = $('#who');
+    who.hidden = !bookReadings.length;
+    who.textContent = reader ? reader.face : '🗣️';
+  }
+
+  // The recording for this page, if the page hasn't changed since it was recorded.
+  function recordingFor(no) {
+    const p = reader && reader.pages[no];
+    return p && p.times && p.hash === Readings.hashPage(story.pages[no]) ? p : null;
+  }
+
+  function urlFor(blob) {
+    if (!audioURLs.has(blob)) audioURLs.set(blob, URL.createObjectURL(blob));
+    return audioURLs.get(blob);
+  }
+
   function openBook(b) {
     book = b;
+    reader = null;
+    $('#who').hidden = true;
+    loadReaders();
     story = Story.parse(b.text, b.title);
     if (b.finished) { b.page = 0; b.sentence = 0; b.finished = false; }
     pageNo = Math.min(b.page || 0, story.pages.length - 1);
@@ -280,36 +312,75 @@
     playing = false;
     clearTimers();
     if ('speechSynthesis' in window) speechSynthesis.cancel();
+    audio.pause();
     $('#play').textContent = '▶️';
   }
 
   function play() {
-    if (!('speechSynthesis' in window)) return;
     if (playing) { stopReading(); saveSpot(); return; }
     playing = true;
     $('#play').textContent = '⏸️';
-    speechSynthesis.cancel();
-    readFrom(at, ++ticket);
+    if ('speechSynthesis' in window) speechSynthesis.cancel();
+    readPage(at, ++ticket);
+  }
+
+  // Read this page from sentence `si`: a family recording if there is one, otherwise the voice.
+  function readPage(si, t, once) {
+    if (recordingFor(pageNo)) playRecording(si, t, once);
+    else readFrom(si, t, once);
+  }
+
+  // Finished a page: turn over and keep going, or it's the end.
+  function pageDone(t) {
+    if (pageNo < story.pages.length - 1) {
+      timers.push(setTimeout(() => {
+        if (t !== ticket) return;
+        pageNo++;
+        at = 0;
+        renderPage();
+        saveSpot();
+        readPage(0, t);
+      }, 900));
+    } else {
+      theEnd();
+    }
+  }
+
+  // Play the recording from sentence `si`, lighting up words as they are said.
+  function playRecording(si, t, once) {
+    const rec = recordingFor(pageNo);
+    const times = rec.times;
+    const startAt = Math.max(0, (times[si] && times[si][0] !== undefined ? times[si][0] : 0) - 0.15);
+    const stopAt = once ? (times[si + 1] ? times[si + 1][0] - 0.05 : Infinity) : Infinity;
+    audio.src = urlFor(rec.blob);
+    audio.playbackRate = AUDIO_SPEED[book.speed || 'normal'];
+    let lastS = -1, lastW = -1;
+    const start = () => {
+      audio.currentTime = startAt;
+      audio.play().catch(() => stopReading());
+      const tick = () => {
+        if (t !== ticket) return;
+        const now = audio.currentTime + 0.04;
+        // the last word that has started by now
+        let s = si, w = 0;
+        for (let a = 0; a < times.length; a++) for (let b = 0; b < times[a].length; b++) if (times[a][b] <= now) { s = a; w = b; }
+        if (s < si) { s = si; w = 0; }
+        if (s !== lastS) { markSentence(s); at = s; if (!once) saveSpot(); lastS = s; lastW = -1; }
+        if (w !== lastW) { markWord(s, w); lastW = w; }
+        if (audio.currentTime >= stopAt) { stopReading(); return; }
+        if (audio.ended) { if (once) stopReading(); else pageDone(t); return; }
+        requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    };
+    if (audio.readyState >= 1) start();
+    else audio.addEventListener('loadedmetadata', start, { once: true });
   }
 
   // Read sentence `si` (and keep going while playing).
   function readFrom(si, t, once) {
     if (t !== ticket) return;
-    if (si >= sents.length) {
-      if (pageNo < story.pages.length - 1) {
-        timers.push(setTimeout(() => {
-          if (t !== ticket) return;
-          pageNo++;
-          at = 0;
-          renderPage();
-          saveSpot();
-          readFrom(0, t);
-        }, 900));
-      } else {
-        theEnd();
-      }
-      return;
-    }
+    if (si >= sents.length) { pageDone(t); return; }
     at = si;
     markSentence(si);
     saveSpot();
@@ -383,10 +454,7 @@
     DB.put(book).catch(() => {});
     Sound.cheer();
     Celebrate.burst();
-    setTimeout(() => {
-      const u = utter('The end!');
-      speechSynthesis.speak(u);
-    }, 900);
+    if (!reader && 'speechSynthesis' in window) setTimeout(() => speechSynthesis.speak(utter('The end!')), 900);
   }
 
   // Tap a word: hear just that word, and carry on from that sentence next time.
@@ -397,6 +465,23 @@
     markSentence(si);
     markWord(si, wi);
     saveSpot();
+    const rec = recordingFor(pageNo);
+    if (rec) {
+      const tm = rec.times;
+      const from = tm[si][wi], next = tm[si][wi + 1] ?? (tm[si + 1] ? tm[si + 1][0] : from + 0.8);
+      const t = ++ticket;
+      audio.src = urlFor(rec.blob);
+      audio.playbackRate = 0.9;
+      const go = () => {
+        audio.currentTime = Math.max(0, from - 0.05);
+        audio.play().catch(() => {});
+        const stopAt = Math.min(next, from + 1.2);
+        const tick = () => { if (t !== ticket) return; if (audio.currentTime >= stopAt || audio.ended) audio.pause(); else requestAnimationFrame(tick); };
+        requestAnimationFrame(tick);
+      };
+      if (audio.readyState >= 1) go(); else audio.addEventListener('loadedmetadata', go, { once: true });
+      return;
+    }
     speechSynthesis.speak(utter(Story.spoken(sents[si].words[wi].w).replace(/[^\p{L}\p{N}'’-]/gu, ''), 0.85, 1.1));
   }
 
@@ -405,7 +490,7 @@
     const wasPlaying = playing;
     stopReading();
     if (wasPlaying) { play(); return; }
-    readFrom(at, ++ticket, true);
+    readPage(at, ++ticket, true);
   }
 
   function turn(d) {
@@ -438,6 +523,33 @@
     showSpeed();
     if (playing) { stopReading(); play(); }
   }));
+  // Kevin picks who reads: each family reader, then the computer voice.
+  $('#who').addEventListener('click', () => {
+    Sound.unlock();
+    if (!bookReadings.length) return;
+    const order = [...bookReadings, null];
+    reader = order[(order.indexOf(reader) + 1) % order.length];
+    book.reader = reader ? reader.id : 'voice';
+    DB.put(book).catch(() => {});
+    $('#who').textContent = reader ? reader.face : '🗣️';
+    const wasPlaying = playing;
+    stopReading();
+    if (reader) {
+      // a little hello in their own voice: the start of page one
+      const p0 = Object.keys(reader.pages).map(Number).sort((a, b) => a - b)[0];
+      if (!wasPlaying && p0 !== undefined) {
+        const t = ++ticket;
+        audio.src = urlFor(reader.pages[p0].blob);
+        audio.playbackRate = 1;
+        const go = () => { audio.currentTime = 0; audio.play().catch(() => {}); setTimeout(() => { if (t === ticket) audio.pause(); }, 1500); };
+        if (audio.readyState >= 1) go(); else audio.addEventListener('loadedmetadata', go, { once: true });
+      }
+    } else if ('speechSynthesis' in window && !wasPlaying) {
+      speechSynthesis.speak(utter('I will read it!'));
+    }
+    if (wasPlaying) play();
+  });
+
   // swipe to turn the page
   let swipe = null;
   $('#page-wrap').addEventListener('pointerdown', e => { swipe = { x: e.clientX, y: e.clientY }; });
@@ -533,8 +645,254 @@
     }
     if (!voices.length) sel.innerHTML = '<option value="">No voices found on this device</option>';
     $('#f-delete').hidden = !b;
+    showReadings();
     $('#editor').hidden = false;
   }
+
+  // ---------- grown-ups: family readings of this book
+  const FACES = ['👴', '👵', '👩', '👨', '🧑', '👱‍♀️', '🧔', '👧', '👦', '🐶', '🐱', '🦸'];
+
+  async function showReadings() {
+    const list = $('#readings-list');
+    list.innerHTML = '';
+    $('#new-reading').hidden = !editing;
+    if (!editing) { $('#readings-note').textContent = 'Save the book first, then you can record family members reading it.'; return; }
+    const st = Story.parse(editing.text, editing.title);
+    const rs = await Readings.forBook(editing.id);
+    for (const r of rs) {
+      const done = st.pages.filter((pg, i) => r.pages[i] && r.pages[i].hash === Readings.hashPage(pg)).length;
+      const stale = st.pages.filter((pg, i) => r.pages[i] && r.pages[i].hash !== Readings.hashPage(pg)).length;
+      const li = document.createElement('li');
+      li.innerHTML = `<span class="f"></span><span class="n"></span><span class="m"></span>
+        <button class="rec" title="Record pages">🎙️</button><button class="exp" title="Export to share">📤</button><button class="del" title="Delete">🗑️</button>`;
+      li.querySelector('.f').textContent = r.face;
+      li.querySelector('.n').textContent = r.name;
+      li.querySelector('.m').textContent = `${done} of ${st.pages.length} pages` + (stale ? ` · ${stale} to record again (words changed)` : '');
+      li.querySelector('.rec').addEventListener('click', () => openRecorder(editing, r));
+      li.querySelector('.exp').addEventListener('click', () => exportReading(r, editing));
+      li.querySelector('.del').addEventListener('click', async () => {
+        if (!confirm(`Delete ${r.name}'s reading of "${editing.title}"?`)) return;
+        await Readings.del(r.id);
+        showReadings();
+      });
+      list.appendChild(li);
+    }
+    $('#readings-note').textContent = rs.length ? '' : 'Record yourself reading this book, page by page. Kevin can then pick your voice in the reader.';
+  }
+
+  let newFace = FACES[0];
+  $('#new-reading').addEventListener('click', () => {
+    $('#rn-name').value = '';
+    newFace = FACES[0];
+    picker('#rn-face', FACES, newFace, (el, f) => { el.textContent = f; }, f => { newFace = f; });
+    $('#reading-new').hidden = false;
+    setTimeout(() => $('#rn-name').focus(), 50);
+  });
+  $('#rn-close').addEventListener('click', () => { $('#reading-new').hidden = true; });
+  $('#rn-start').addEventListener('click', async () => {
+    const name = $('#rn-name').value.trim();
+    if (!name) { $('#rn-name').focus(); return; }
+    const r = { id: Date.now(), bookId: editing.id, name, face: newFace, created: Date.now(), pages: {} };
+    await Readings.put(r);
+    $('#reading-new').hidden = true;
+    openRecorder(editing, r);
+  });
+
+  async function exportReading(r, b) {
+    const file = await Readings.exportFile(r, b);
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      try { await navigator.share({ files: [file], title: file.name }); return; } catch (e) { if (e.name === 'AbortError') return; }
+    }
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(file);
+    a.download = file.name;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  }
+
+  // Import a reading someone exported (adds the book too if this device doesn't have it).
+  $('#import-reading').addEventListener('click', () => $('#import-input').click());
+  $('#import-input').addEventListener('change', async e => {
+    const f = e.target.files[0];
+    e.target.value = '';
+    if (!f) return;
+    let data;
+    try { data = await Readings.parseFile(f); } catch (err) { alert("That file isn't a Read Along reading."); return; }
+    const all = await DB.all().catch(() => []);
+    let b = all.find(x => x.text === data.book.text) || all.find(x => x.title === data.book.title);
+    if (!b) {
+      b = newBook({ text: data.book.text, title: data.book.title, emoji: data.book.emoji, colour: data.book.colour });
+      await DB.put(b);
+    }
+    const existing = (await Readings.forBook(b.id)).find(r => r.name === data.reader.name);
+    if (existing) {
+      if (!confirm(`Replace ${existing.name}'s reading of "${b.title}"?`)) return;
+      await Readings.del(existing.id);
+    }
+    await Readings.put({ id: Date.now(), bookId: b.id, name: data.reader.name, face: data.reader.face, created: Date.now(), pages: data.pages });
+    alert(`${data.reader.face} ${data.reader.name}'s reading of "${b.title}" is ready.`);
+    openAdmin();
+  });
+
+  // ---------- grown-ups: the recorder (page by page)
+  const rec = { book: null, reading: null, story: null, page: 0, stream: null, media: null, chunks: [], level: null, ctx: null, live: false };
+
+  async function openRecorder(b, r) {
+    rec.book = b;
+    rec.reading = r;
+    rec.story = Story.parse(b.text, b.title);
+    const firstTodo = rec.story.pages.findIndex((pg, i) => !(r.pages[i] && r.pages[i].hash === Readings.hashPage(pg)));
+    rec.page = firstTodo < 0 ? 0 : firstTodo;
+    $('.rec-face').textContent = r.face;
+    $('.rec-who').textContent = `${r.name} reads "${b.title}"`;
+    $('#recorder').hidden = false;
+    recShow();
+    try {
+      // Chrome's clean-up makes voices clearer; 'kg-read-raw-mic' switches it off (used for testing).
+      const raw = store.get('kg-read-raw-mic', '') === '1';
+      rec.stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: !raw, noiseSuppression: !raw, autoGainControl: !raw } });
+      rec.ctx = rec.ctx || new (window.AudioContext || window.webkitAudioContext)();
+      const an = rec.ctx.createAnalyser();
+      an.fftSize = 512;
+      rec.ctx.createMediaStreamSource(rec.stream).connect(an);
+      rec.level = an;
+      recStatus(r.pages[rec.page] ? 'Tap ⏺ to record this page again, or ➡️ to move on.' : 'Tap ⏺ and read this page out loud.');
+    } catch (e) {
+      recStatus('🎤 The microphone is blocked. Allow it for this site in Chrome settings, then try again.');
+    }
+  }
+
+  function recStatus(text) { $('.rec-status').textContent = text; }
+
+  function recShow() {
+    const pg = rec.story.pages[rec.page];
+    const el = $('#rec-page');
+    el.innerHTML = '';
+    el.dataset.page = rec.page;
+    pg.paras.forEach(p => {
+      const box = document.createElement(p.heading ? 'h2' : 'p');
+      p.sentences.forEach((ws, si) => ws.forEach((w, wi) => {
+        const sp = document.createElement('span');
+        sp.className = 'w';
+        sp.textContent = w.w;
+        box.appendChild(sp);
+        box.appendChild(w.br ? document.createElement('br') : document.createTextNode(' '));
+      }));
+      el.appendChild(box);
+    });
+    // fit like the reader does
+    let fs = Math.min(48, Math.max(24, window.innerWidth / 26));
+    el.style.setProperty('--fs', `${fs}px`);
+    while (el.scrollHeight > el.clientHeight + 2 && fs > 18) { fs -= 2; el.style.setProperty('--fs', `${fs}px`); }
+    const r = rec.reading;
+    $('.rec-dots').innerHTML = rec.story.pages.map((p, i) => {
+      const got = r.pages[i];
+      const cls = got ? (got.hash === Readings.hashPage(p) ? 'done' : 'stale') : '';
+      return `<i class="${cls} ${i === rec.page ? 'on' : ''}" data-i="${i}">${got && cls === 'done' ? '✓' : i + 1}</i>`;
+    }).join('');
+    $('.rec-dots').querySelectorAll('i').forEach(d => d.addEventListener('click', () => { if (!rec.live) { rec.page = Number(d.dataset.i); recShow(); } }));
+    $('#rec-prev').disabled = rec.page === 0;
+    $('#rec-next').disabled = rec.page === rec.story.pages.length - 1;
+    $('#rec-listen').disabled = !r.pages[rec.page];
+  }
+
+  function recStart() {
+    if (!rec.stream || rec.live) return;
+    audio.pause();
+    const types = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg;codecs=opus'];
+    const type = types.find(t => window.MediaRecorder && MediaRecorder.isTypeSupported(t)) || '';
+    rec.media = new MediaRecorder(rec.stream, type ? { mimeType: type } : undefined);
+    rec.chunks = [];
+    rec.media.ondataavailable = e => { if (e.data.size) rec.chunks.push(e.data); };
+    rec.media.onstop = recSave;
+    rec.media.start();
+    rec.live = true;
+    rec.began = performance.now();
+    $('#rec-go').classList.add('on');
+    $('#rec-page').classList.add('live');
+    const data = new Uint8Array(rec.level.fftSize);
+    const meter = () => {
+      if (!rec.live) return;
+      rec.level.getByteTimeDomainData(data);
+      let peak = 0;
+      for (const v of data) peak = Math.max(peak, Math.abs(v - 128) / 128);
+      $('#rec-go').style.setProperty('--lvl', Math.min(1, peak * 2).toFixed(2));
+      recStatus(`🔴 Recording… ${Math.floor((performance.now() - rec.began) / 1000)}s — tap ⏹ when you finish the page`);
+      requestAnimationFrame(meter);
+    };
+    meter();
+  }
+
+  function recStop() {
+    if (!rec.live) return;
+    rec.live = false;
+    rec.media.stop();
+    $('#rec-go').classList.remove('on');
+    $('#rec-page').classList.remove('live');
+    recStatus('Saving…');
+  }
+
+  async function recSave() {
+    const blob = new Blob(rec.chunks, { type: rec.media.mimeType || 'audio/webm' });
+    const pg = rec.story.pages[rec.page];
+    try {
+      const { times, dur } = await Readings.timesFor(blob, pg, rec.ctx);
+      rec.reading.pages[rec.page] = { blob, mime: blob.type, hash: Readings.hashPage(pg), dur, times };
+      await Readings.put(rec.reading);
+    } catch (e) {
+      recStatus("😕 That recording didn't work. Please try this page again.");
+      return;
+    }
+    const last = rec.story.pages.length - 1;
+    const allDone = rec.story.pages.every((p, i) => rec.reading.pages[i] && rec.reading.pages[i].hash === Readings.hashPage(p));
+    if (allDone) {
+      recShow();
+      recStatus('🎉 All pages recorded! Tap ✔️ to finish, or ▶️ to listen.');
+      return;
+    }
+    recStatus('✓ Saved.');
+    setTimeout(() => {
+      if (rec.page < last) rec.page++;
+      recShow();
+      recStatus('Tap ⏺ and read this page out loud.');
+    }, 600);
+  }
+
+  // Listen back, with the words lighting up so you can check the timing.
+  function recListen() {
+    const p = rec.reading.pages[rec.page];
+    if (!p || rec.live) return;
+    const spansFlat = [...$('#rec-page').querySelectorAll('.w')];
+    const flat = p.times.flat();
+    audio.src = urlFor(p.blob);
+    audio.playbackRate = 1;
+    const go = () => {
+      audio.currentTime = 0;
+      audio.play().catch(() => {});
+      const tick = () => {
+        let k = -1;
+        flat.forEach((x, i) => { if (x <= audio.currentTime + 0.04) k = i; });
+        spansFlat.forEach((sp, i) => sp.classList.toggle('now', i === k));
+        if (!audio.paused && !audio.ended && !$('#recorder').hidden) requestAnimationFrame(tick);
+        else spansFlat.forEach(sp => sp.classList.remove('now'));
+      };
+      requestAnimationFrame(tick);
+    };
+    if (audio.readyState >= 1 && audio.src === urlFor(p.blob)) go(); else audio.addEventListener('loadedmetadata', go, { once: true });
+  }
+
+  $('#rec-go').addEventListener('click', () => (rec.live ? recStop() : recStart()));
+  $('#rec-listen').addEventListener('click', recListen);
+  $('#rec-prev').addEventListener('click', () => { if (!rec.live && rec.page > 0) { audio.pause(); rec.page--; recShow(); } });
+  $('#rec-next').addEventListener('click', () => { if (!rec.live && rec.page < rec.story.pages.length - 1) { audio.pause(); rec.page++; recShow(); } });
+  $('#rec-close').addEventListener('click', () => {
+    if (rec.live) recStop();
+    audio.pause();
+    if (rec.stream) rec.stream.getTracks().forEach(tr => tr.stop());
+    rec.stream = null;
+    $('#recorder').hidden = true;
+    showReadings();
+  });
 
   $('#f-voice-test').addEventListener('click', () => {
     const v = voices.find(x => x.name === $('#f-voice').value);
@@ -584,13 +942,14 @@
   $('#f-delete').addEventListener('click', async () => {
     if (!editing || !confirm(`Delete "${editing.title}"?`)) return;
     await DB.del(editing.id);
+    for (const r of await Readings.forBook(editing.id)) await Readings.del(r.id);
     $('#editor').hidden = true;
     openAdmin();
   });
   $('#editor-close').addEventListener('click', () => { $('#editor').hidden = true; });
 
   // Handy for poking at the reader from the browser console.
-  window.readAlong = { get book() { return book; }, get at() { return at; }, get page() { return pageNo; }, get exactVoices() { return exactVoices; }, get timing() { return timing; }, get nudge() { return nudge; }, get playing() { return playing; } };
+  window.readAlong = { get book() { return book; }, get at() { return at; }, get page() { return pageNo; }, get exactVoices() { return exactVoices; }, get timing() { return timing; }, get nudge() { return nudge; }, get playing() { return playing; }, get reader() { return reader; }, audio };
 
   loadVoices();
   showShelf();
