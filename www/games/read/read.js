@@ -116,8 +116,39 @@
   let at = 0;       // sentence we're up to
   let playing = false;
   let ticket = 0;   // bumps on every stop so old speech callbacks are ignored
-  let exact = store.get('kg-read-exact', '') === '1'; // does this voice report word timing?
-  let cps = Number(store.get('kg-read-cps', '14')) || 14; // characters per second at speed 1 (learned as it reads)
+  // ---------- word timing
+  // Some voices (most desktop ones) tell us as each word is spoken: "exact".
+  // Others (many Android ones) don't, so we estimate. For each voice we learn how long it
+  // takes per letter, separately from the fixed delay before it reports it has finished
+  // (Android reports late, which used to make the highlight lag).
+  const loadJSON = (k, d) => { try { return JSON.parse(store.get(k, '')) || d; } catch (e) { return d; } };
+  let exactVoices = loadJSON('kg-read-exact-voices', []);
+  let timing = loadJSON('kg-read-timing', {});   // voice name -> [[units / rate, seconds], ...]
+  let nudge = Number(store.get('kg-read-nudge', '0')) || 0; // grown-up adjustment, -0.4 … +0.4
+
+  // How much "time" a word takes: its letters, plus the little pause after punctuation.
+  const units = w => w.length + 1 + (/[.!?…]["'”’)]*$/.test(w) ? 5 : /[,;:—–]["'”’)]*$/.test(w) ? 3 : 0);
+
+  // Seconds per unit at speed 1 for this voice: a straight-line fit of duration against length.
+  function secsPerUnit(voiceName) {
+    const pts = timing[voiceName] || [];
+    let b = 1 / 17; // a typical Android voice, until we have learned this one
+    if (pts.length >= 4) {
+      const n = pts.length;
+      const mx = pts.reduce((a, p) => a + p[0], 0) / n, my = pts.reduce((a, p) => a + p[1], 0) / n;
+      const vx = pts.reduce((a, p) => a + (p[0] - mx) ** 2, 0);
+      if (vx > 25) b = pts.reduce((a, p) => a + (p[0] - mx) * (p[1] - my), 0) / vx;
+      else b = pts.reduce((a, p) => a + Math.max(0, p[1] - 0.4) / p[0], 0) / n; // all similar lengths
+    }
+    return Math.max(0.025, Math.min(0.2, b)) * (1 + nudge);
+  }
+
+  function learn(voiceName, x, secs) {
+    const pts = timing[voiceName] || (timing[voiceName] = []);
+    pts.push([Math.round(x * 10) / 10, Math.round(secs * 1000) / 1000]);
+    if (pts.length > 30) pts.shift();
+    store.set('kg-read-timing', JSON.stringify(timing));
+  }
   let timers = [];
 
   function openBook(b) {
@@ -289,23 +320,26 @@
     const starts = [];
     words.reduce((pos, w) => { starts.push(pos); return pos + w.length + 1; }, 0);
     const u = part.style === 'strong' ? utter(text, 0.8, 1.3) : part.style === 'em' ? utter(text, 0.88, 1.15) : utter(text);
+    const vname = u.voice ? u.voice.name : 'default';
+    const wordUnits = words.map(units);
+    const total = wordUnits.reduce((a, b) => a + b, 0);
     let began = 0, gotBoundary = false;
     u.onstart = () => {
       if (t !== ticket) return;
       began = performance.now();
       markWord(si, part.idx[0]);
-      if (exact) return;
-      // Estimate when each word is said; corrected when the next run starts.
-      const perChar = 1000 / (cps * u.rate);
+      // Estimate when each word is said. If the voice reports real word timing, that takes over.
+      const msPerUnit = (secsPerUnit(vname) * 1000) / u.rate;
+      let soFar = 0;
       words.forEach((w, k) => {
-        if (k === 0) return;
-        timers.push(setTimeout(() => { if (t === ticket && !gotBoundary) markWord(si, part.idx[k]); }, starts[k] * perChar));
+        if (k > 0) timers.push(setTimeout(() => { if (t === ticket && !gotBoundary) markWord(si, part.idx[k]); }, soFar * msPerUnit));
+        soFar += wordUnits[k];
       });
     };
     u.onboundary = e => {
       if (t !== ticket || (e.name && e.name !== 'word')) return;
       gotBoundary = true;
-      if (!exact) { exact = true; store.set('kg-read-exact', '1'); }
+      if (!exactVoices.includes(vname)) { exactVoices.push(vname); store.set('kg-read-exact-voices', JSON.stringify(exactVoices)); }
       let k = 0;
       while (k + 1 < starts.length && starts[k + 1] <= e.charIndex) k++;
       markWord(si, part.idx[k]);
@@ -314,10 +348,7 @@
       if (t !== ticket) return;
       // Learn how fast this voice really talks, to time the highlighting better.
       const secs = (performance.now() - began) / 1000;
-      if (began && secs > 0.4 && text.length > 8) {
-        cps = cps * 0.7 + (text.length / secs / u.rate) * 0.3;
-        store.set('kg-read-cps', cps.toFixed(2));
-      }
+      if (began && !gotBoundary && secs > 0.3 && words.length >= 2) learn(vname, total / u.rate, secs);
       done();
     };
     u.onerror = e => {
@@ -446,15 +477,31 @@
       li.querySelector('.e').textContent = b.emoji;
       li.querySelector('.e').style.background = b.colour;
       li.querySelector('.t').textContent = b.title;
-      li.querySelector('.m').textContent = `${Story.parse(b.text, b.title).pages.length} pages · ${b.voiceName || 'default voice'}`;
+      const v = voiceFor(b);
+      const mode = !v ? '' : exactVoices.includes(v.name) ? ' · exact timing' : timing[v.name] ? ' · timed' : ' · not read yet';
+      li.querySelector('.m').textContent = `${Story.parse(b.text, b.title).pages.length} pages · ${v ? v.name : 'default voice'}${mode}`;
       li.addEventListener('click', () => openEditor(b));
       list.appendChild(li);
     }
-    $('#timing-note').textContent = exact
-      ? 'Word highlighting: exact — this tablet tells us when each word is spoken.'
-      : 'Word highlighting: timed — words are lit up by timing, and each sentence re-syncs. (Read a book once and come back to check.)';
+    showTiming();
     $('#admin').hidden = false;
   }
+  function showTiming() {
+    const pct = Math.round(-nudge * 100);
+    $('#timing-note').textContent = 'Exact timing = the voice tells us each word. Timed = we learn the voice\'s speed as it reads (it gets better after a page or two). '
+      + (nudge ? `Highlight nudged ${pct > 0 ? 'faster' : 'slower'} by ${Math.abs(pct)}%.` : '');
+  }
+  // Grown-up nudge for voices that are timed: speed the highlight up or slow it down.
+  $('#lag').addEventListener('click', () => { nudge = Math.max(-0.4, nudge - 0.08); store.set('kg-read-nudge', String(nudge)); showTiming(); });
+  $('#ahead').addEventListener('click', () => { nudge = Math.min(0.4, nudge + 0.08); store.set('kg-read-nudge', String(nudge)); showTiming(); });
+  $('#timing-reset').addEventListener('click', () => {
+    nudge = 0;
+    timing = {};
+    store.set('kg-read-nudge', '0');
+    store.set('kg-read-timing', '{}');
+    showTiming();
+  });
+
   $('#admin-close').addEventListener('click', () => { $('#admin').hidden = true; showShelf(); });
   $('#add-book').addEventListener('click', () => openEditor(null));
 
@@ -556,7 +603,7 @@
   $('#editor-close').addEventListener('click', () => { $('#editor').hidden = true; });
 
   // Handy for poking at the reader from the browser console.
-  window.readAlong = { get book() { return book; }, get at() { return at; }, get page() { return pageNo; }, get exact() { return exact; }, get playing() { return playing; } };
+  window.readAlong = { get book() { return book; }, get at() { return at; }, get page() { return pageNo; }, get exactVoices() { return exactVoices; }, get timing() { return timing; }, get nudge() { return nudge; }, get playing() { return playing; } };
 
   loadVoices();
   showShelf();

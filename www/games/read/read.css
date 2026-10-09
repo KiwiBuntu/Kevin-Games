@@ -107,3 +107,5 @@ body { display: flex; flex-direction: column; }
 }
 .panel input[hidden] { display: none; }
 .btn.small, .btn.wide, .row .btn { font-family: var(--font); gap: 6px; }
+.panel h3 { margin: 18px 0 4px; }
+.row.timing { flex-wrap: wrap; justify-content: flex-start; margin-top: 6px; }
