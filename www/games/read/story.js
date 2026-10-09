@@ -91,11 +91,14 @@ const Story = (() => {
       const ss = sentences(words(b.text));
       const size = ss.reduce((n, s) => n + s.length, 0);
       // start a fresh page rather than split a paragraph (or verse) that would fit on one
-      if (count > 0 && count + size > PAGE_WORDS && size <= PAGE_WORDS) newPage();
+      const room = b.verse ? PAGE_WORDS * 1.4 : PAGE_WORDS; // a verse may squeeze a little to stay whole
+      const onlyHeading = page.paras.length > 0 && page.paras.every(p => p.heading);
+      if (b.verse && count > 0 && !(onlyHeading && count + size <= room)) newPage(); // one verse per page
+      else if (!b.verse && count > 0 && count + size > PAGE_WORDS && size <= room) newPage();
       // a paragraph longer than a page flows over pages at sentence ends
       let cur = { heading: false, sentences: [] };
       for (const s of ss) {
-        if (count + s.length > PAGE_WORDS && count > 0) {
+        if (count + s.length > (size <= room ? room : PAGE_WORDS) && count > 0) {
           if (cur.sentences.length) page.paras.push(cur);
           newPage();
           cur = { heading: false, sentences: [] };

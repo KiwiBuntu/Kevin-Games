@@ -3,7 +3,7 @@
 (() => {
   const $ = s => document.querySelector(s);
   const SPEEDS = { slow: 0.7, normal: 0.95, fast: 1.2 };
-  const EMOJIS = ['📖', '🦇', '🚂', '🚗', '🚀', '🦕', '🐻', '🐶', '🐱', '🐰', '🦁', '🐘', '🐙', '🐠', '🦄', '🧚', '🏰', '🌳', '🌈', '⭐', '🌙', '☀️', '🍎', '🎈', '⚽'];
+  const EMOJIS = ['📖', '❤️', '🦇', '🐊', '🚂', '🚗', '🚀', '🦕', '🐻', '🐶', '🐱', '🐰', '🦁', '🐘', '🐙', '🐠', '🦄', '🧚', '🏰', '🌳', '🌈', '⭐', '🌙', '☀️', '🍎', '🎈', '⚽'];
   const COLOURS = ['#ff4d4d', '#ff9f1c', '#e0b400', '#6aa31d', '#2ec4b6', '#3a86ff', '#8338ec', '#ff5fa2', '#3d405b'];
 
 
@@ -211,7 +211,9 @@
     const el = $('#page');
     let fs = Math.min(56, Math.max(28, window.innerWidth / 22));
     el.style.setProperty('--fs', `${fs}px`);
-    while ((el.scrollHeight > el.clientHeight + 2 || verseWraps(el)) && fs > 20) {
+    // Keep poem lines whole, but not at the cost of tiny text: below this, long lines may wrap.
+    const verseFloor = Math.max(34, fs * 0.72);
+    while ((el.scrollHeight > el.clientHeight + 2 || (fs > verseFloor && verseWraps(el))) && fs > 20) {
       fs -= 2;
       el.style.setProperty('--fs', `${fs}px`);
     }

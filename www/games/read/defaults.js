@@ -80,4 +80,66 @@ I giggled and whispered, still sleepy and yawning,
 
 “Grandpa’s not Batman… but I’ll ask him this morning!”`,
   },
+  {
+    key: 'grandlove', emoji: '❤️', colour: '#ff5fa2',
+    text: `# My Grandparents Love Me
+
+I'm off to Gran and Grandpa's house
+with a big smile on my face.
+I always feel wrapped up in love
+when I stay at their place!
+Gran's big welcome hugs are warm.
+Grandpa swings me round!
+He laughs, "You're getting heavy", as my feet fly off the ground.
+
+My room at Gran and Grandpa's house has special toys there too.
+Gran smiles, "Have you looked on your bed?
+You may find something **new**!"
+
+Gran's baking is delicious, **yum**!
+And when I munch and scoff
+more cakes than Mum would let me eat,
+Gran never tells me off!
+
+Out at the funfair's splish-splash ride,
+they don't mind getting wet.
+Then off we go for ice creams, **slurp**!
+the biggest we can get!
+
+I don't know how Gran's handbag,
+which doesn't look that full,
+has all we need for our day out....
+It must be **magical**!
+
+It's great to help in Grandpa's shed.
+We build amazing things.
+Gran hasn't seen our rocket - *ssshh*!
+It's red with silver wings.
+
+Sometimes my Gran and Grandpa
+will come to visit me.
+We all go out together then,
+it's so much fun - **yippeee**!
+
+Gran says I'll be a champion
+She's teaching me to swim.
+With her beside me, I'm not scared.
+Now I can jump right in!
+
+Back home we all dress up and dance.
+Gran puts loud music on
+while Grandpa jokes about
+and does the steps all wrong!
+
+"Let's read this story, Gran!" I say.
+We snuggle in a chair
+Gran's silly voices make me laugh
+pretending she's the bear!
+
+Warm from my bath and tucked in bed.
+I *yawn*, "I've had such **fun**!"
+"Us too", they smile and kiss *night-night*
+
+We love you, little one!`,
+  },
 ];
