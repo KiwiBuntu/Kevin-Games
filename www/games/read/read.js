@@ -71,8 +71,21 @@
     try { seeded = JSON.parse(store.get('kg-read-defaults', '[]')); } catch (e) {}
     if (store.get('kg-read-seeded', '0') === '1' && !seeded.includes('train')) seeded.push('train'); // older versions
     for (const d of DefaultBooks) {
+      // Already have it? Bring it up to date if the default has been changed since.
+      const mine = books.find(b => b.defaultKey === d.key) ||
+        books.find(b => !b.defaultKey && b.title === Story.parse(d.text).title); // copies from before versions
+      if (mine) {
+        if (!mine.edited && (mine.defaultVersion || 1) < (d.version || 1) && mine.text !== d.text) {
+          Object.assign(mine, { text: d.text, title: Story.parse(d.text).title, page: 0, sentence: 0, finished: false });
+        }
+        if (mine.defaultKey !== d.key || mine.defaultVersion !== (d.version || 1)) {
+          mine.defaultKey = d.key;
+          mine.defaultVersion = d.version || 1;
+          await DB.put(mine).catch(() => {});
+        }
+      }
       if (seeded.includes(d.key)) continue;
-      const nb = newBook({ text: d.text, emoji: d.emoji, colour: d.colour });
+      const nb = newBook({ text: d.text, emoji: d.emoji, colour: d.colour, defaultKey: d.key, defaultVersion: d.version || 1 });
       nb.added = Date.now() - DefaultBooks.indexOf(d); // keep them in list order on the shelf
       await DB.put(nb).catch(() => {});
       books.push(nb);
@@ -587,7 +600,7 @@
     let b;
     if (editing) {
       b = { ...editing, ...fields };
-      if (editing.text !== text) { b.page = 0; b.sentence = 0; b.finished = false; } // story changed: start again
+      if (editing.text !== text) { b.page = 0; b.sentence = 0; b.finished = false; b.edited = true; } // story changed: start again
     } else {
       b = newBook(fields);
     }

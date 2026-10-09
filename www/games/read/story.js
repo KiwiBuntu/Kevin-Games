@@ -93,7 +93,7 @@ const Story = (() => {
       // start a fresh page rather than split a paragraph (or verse) that would fit on one
       const room = b.verse ? PAGE_WORDS * 1.4 : PAGE_WORDS; // a verse may squeeze a little to stay whole
       const onlyHeading = page.paras.length > 0 && page.paras.every(p => p.heading);
-      if (b.verse && count > 0 && !(onlyHeading && count + size <= room)) newPage(); // one verse per page
+      if (b.verse && count > 0 && !(onlyHeading && (count + size <= room || size > room))) newPage(); // one verse per page
       else if (!b.verse && count > 0 && count + size > PAGE_WORDS && size <= room) newPage();
       // a paragraph longer than a page flows over pages at sentence ends
       let cur = { heading: false, sentences: [] };

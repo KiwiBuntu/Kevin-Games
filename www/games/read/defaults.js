@@ -1,8 +1,9 @@
-// Books that come on the shelf. Each one is added once per device (by key),
-// so deleting one won't bring it back, and new ones here appear on the next visit.
+// Books that come on the shelf. Each one is added once per device (by key), so deleting
+// one won't bring it back. Bump `version` after changing a book's text: devices that have
+// an older copy get the new text, unless a grown-up has edited that book on the device.
 const DefaultBooks = [
   {
-    key: 'train', emoji: '🚂', colour: '#ff4d4d',
+    key: 'train', version: 1, emoji: '🚂', colour: '#ff4d4d',
     text: `# Kevin and the Big Red Train
 
 Kevin had a **big** red train. It went *choo choo* down the track.
@@ -46,7 +47,7 @@ Grandpa and Granny were waiting with a big hug.
 *"Toot toot. See you tomorrow, Kevin,"* said the train.`,
   },
   {
-    key: 'batman', emoji: '🦇', colour: '#3d405b',
+    key: 'batman', version: 1, emoji: '🦇', colour: '#3d405b',
     text: `# Grandpa’s Batman?
 
 One quiet night, when the moon shone bright,
@@ -81,12 +82,12 @@ I giggled and whispered, still sleepy and yawning,
 “Grandpa’s not Batman… but I’ll ask him this morning!”`,
   },
   {
-    key: 'grandlove', emoji: '❤️', colour: '#ff5fa2',
+    key: 'grandlove', version: 2, emoji: '❤️', colour: '#ff5fa2',
     text: `# My Grandparents Love Me
 
-I'm off to Gran and Grandpa's house
+I'm off to Gran and Grandpa's house,
 with a big smile on my face.
-I always feel wrapped up in love
+I always feel wrapped up in love,
 when I stay at their place!
 Gran's big welcome hugs are warm.
 Grandpa swings me round!
@@ -97,7 +98,7 @@ Gran smiles, "Have you looked on your bed?
 You may find something **new**!"
 
 Gran's baking is delicious, **yum**!
-And when I munch and scoff
+And when I munch and scoff,
 more cakes than Mum would let me eat,
 Gran never tells me off!
 
@@ -113,33 +114,61 @@ It must be **magical**!
 
 It's great to help in Grandpa's shed.
 We build amazing things.
-Gran hasn't seen our rocket - *ssshh*!
+Gran hasn't seen our rocket yet - *Shhh*!
 It's red with silver wings.
 
-Sometimes my Gran and Grandpa
+Sometimes my Gran and Grandpa,
 will come to visit me.
 We all go out together then,
 it's so much fun - **yippeee**!
 
-Gran says I'll be a champion
+Gran says I'll be a champion.
 She's teaching me to swim.
 With her beside me, I'm not scared.
 Now I can jump right in!
 
 Back home we all dress up and dance.
-Gran puts loud music on
-while Grandpa jokes about
+Gran puts loud music on,
+while Grandpa jokes about,
 and does the steps all wrong!
 
 "Let's read this story, Gran!" I say.
-We snuggle in a chair
-Gran's silly voices make me laugh
+We snuggle in a chair.
+Gran's silly voices make me laugh,
 pretending she's the bear!
 
-Warm from my bath and tucked in bed.
+Warm from my bath and tucked in bed,
 I *yawn*, "I've had such **fun**!"
 "Us too", they smile and kiss *night-night*
 
 We love you, little one!`,
+  },
+  {
+    key: 'croc', version: 1, emoji: '🐊', colour: '#6aa31d',
+    text: `# Crocodile's Toothache
+
+Oh the Crocodile
+Went to the dentist
+And sat down in the chair,
+And the dentist said, "Now tell me, sir,
+Why does it hurt and where?"
+And the Crocodile said, "I'll tell you the truth.
+I have a terrible ache in my tooth."
+And he opened his jaws so wide, so wide,
+That the dentist he climbed right inside,
+And the dentist laughed, "Oh, isn't this fun?"
+As he pulled the teeth out, one by one.
+And the Crocodile cried, "You're hurting me so!
+Please put down your pliers and let me go."
+But the dentist just laughed with a Ho Ho Ho,
+And he said, "I still have twelve to go --
+Oops, that's the wrong one, I confess.
+But what's one crocodile's tooth, more or less?"
+Then suddenly the jaws went snap,
+And the dentist was gone right off the map.
+And where he went one could only guess...
+To North or South or East or West...
+He left no forwarding address.
+But what's one dentist more or less?`,
   },
 ];
