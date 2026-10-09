@@ -11,7 +11,12 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;700&display=swap">
   <link rel="stylesheet" href="../shared/style.css">
   <style>
-    html, body { height: auto; min-height: 100%; overflow: auto; background: #f4f5fa; user-select: text; -webkit-user-select: text; }
+    /* Same pattern as the home page: the page stays put and #scroller scrolls (reliable on phones) */
+    html, body { background: #f4f5fa; user-select: text; -webkit-user-select: text; }
+    #scroller {
+      position: fixed; inset: 0; overflow-y: auto; -webkit-overflow-scrolling: touch;
+      touch-action: pan-y; overscroll-behavior: contain;
+    }
     main { max-width: 860px; margin: 0 auto; padding: max(14px, env(safe-area-inset-top)) 14px 60px; }
     main[hidden] { display: none; }
     header { display: flex; align-items: center; gap: 12px; }
@@ -54,6 +59,7 @@
   </style>
 </head>
 <body>
+  <div id="scroller">
   <main id="main" hidden>
     <header>
       <a class="btn round" href="../index.html" aria-label="Back to the games">🏠</a>
@@ -116,6 +122,7 @@
       <button class="btn small" id="reset" type="button">🗑️ Clear all stats</button>
     </section>
   </main>
+  </div>
 
   <script src="../shared/sound.js"></script>
   <script src="../shared/gate.js"></script>

@@ -232,7 +232,7 @@
       $('#viewing-from').textContent = `(sent ${new Date(data.sent).toLocaleString()})`;
       ['#limits', '#locks'].forEach(s => { $(s).hidden = true; });
       renderStats(data.stats);
-      window.scrollTo(0, 0);
+      $('#scroller').scrollTo(0, 0);
     } catch (err) { alert("That isn't a Kevin's Games stats file."); }
   });
   $('#viewing-back').addEventListener('click', () => {
