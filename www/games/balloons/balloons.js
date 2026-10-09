@@ -16,7 +16,7 @@
   const SPELL_TARGET = 3; // words to spell for the Hooray screen
 
   // Words for the spelling mode — add more names here! The first word is always the first in this list.
-  const SPELL_WORDS = [
+  const DEFAULT_WORDS = [
     ['KEVIN', '👦', 'Kevin'], ['GRANNY', '👵', 'Granny'], ['GRANDPA', '👴', 'Grandpa'],
     ['MUM', '👩', 'Mum'], ['DAD', '👨', 'Dad'],
     // Sight words (picture is optional — leave it '' when there isn't a good one)
@@ -65,7 +65,7 @@
 
   let balloons = [];
   let bits = [];
-  let words = [];
+  let floaters = [];
   let popped = 0;
   let sinceSpecial = 0;
   let spawnT = 0;
@@ -74,6 +74,16 @@
   // Spelling mode
   let spell = null; // { text, pic, name, idx }
   let spellBag = [];
+  // The word list grown-ups can edit (behind the sum lock); saved on this device.
+  const loadWords = () => {
+    try {
+      const w = JSON.parse(localStorage.getItem('kg-balloons-words'));
+      if (Array.isArray(w) && w.length) return w;
+    } catch (e) {}
+    return DEFAULT_WORDS.map(w => w.slice());
+  };
+  let words = loadWords();
+  const saveWords = () => { try { localStorage.setItem('kg-balloons-words', JSON.stringify(words)); } catch (e) {} };
   let wordsSpelled = 0;
   let spellPause = false;
   let firstWord = true;
@@ -107,7 +117,7 @@
     Win.hide();
     balloons = [];
     bits = [];
-    words = [];
+    floaters = [];
     popped = 0;
     sinceSpecial = 0;
     spawnT = 0;
@@ -116,6 +126,7 @@
     spellPause = false;
     spell = null;
     spellEl.hidden = !MODES[modeIdx].spell;
+    document.getElementById('words-lock').hidden = !MODES[modeIdx].spell;
     if (MODES[modeIdx].spell) nextWord();
     showProgress();
     modeBtn.textContent = MODES[modeIdx].icon;
@@ -131,10 +142,10 @@
   function nextWord() {
     let pick;
     if (firstWord) {
-      pick = SPELL_WORDS[0];
+      pick = words[0];
       firstWord = false;
     } else {
-      if (!spellBag.length) spellBag = SPELL_WORDS.slice().sort(() => Math.random() - 0.5);
+      if (!spellBag.length) spellBag = words.slice().sort(() => Math.random() - 0.5);
       pick = spellBag.pop();
       if (spell && pick[0] === spell.text && spellBag.length) pick = spellBag.pop();
     }
@@ -263,7 +274,7 @@
         color: colours[i % colours.length], life: 1,
       });
     }
-    words.push({
+    floaters.push({
       text: b.label && !b.special ? b.label : b.colourName, emoji: b.emoji && !b.special,
       x: b.x, y: b.y, color: b.special ? '#ff5fa2' : b.color, life: 1,
     });
@@ -308,11 +319,11 @@
       p.life -= dt * 1.4;
     }
     bits = bits.filter(p => p.life > 0);
-    for (const w of words) {
+    for (const w of floaters) {
       w.y -= 40 * dt;
       w.life -= dt * 0.9;
     }
-    words = words.filter(w => w.life > 0);
+    floaters = floaters.filter(w => w.life > 0);
   }
 
   // ---------- drawing
@@ -406,7 +417,7 @@
       ctx.restore();
     }
     // The popped balloon's number/letter/colour floats up for a moment.
-    for (const w of words) {
+    for (const w of floaters) {
       ctx.save();
       ctx.globalAlpha = clamp(w.life * 1.5, 0, 1);
       const r = view.r * (1 + (1 - w.life) * 0.3);
@@ -456,6 +467,58 @@
   muteBtn.addEventListener('click', () => { Sound.setMuted(!Sound.isMuted()); showMute(); Sound.unlock(); Sound.pop(); });
   showMute();
   window.addEventListener('resize', layout);
+  // ---------- grown-ups: edit the spelling words (behind the sum lock)
+  const panel = document.getElementById('words-panel');
+  function showWords() {
+    const list = document.getElementById('word-list');
+    list.innerHTML = '';
+    words.forEach((w, i) => {
+      const li = document.createElement('li');
+      li.className = i === 0 ? 'first' : '';
+      li.innerHTML = '<button class="star" title="Ask this one first">⭐</button><span class="pic"></span><span class="txt"></span><span class="said"></span><button class="del" title="Remove">🗑️</button>';
+      li.querySelector('.pic').textContent = w[1];
+      li.querySelector('.txt').textContent = w[0];
+      if (w[2] && w[2].toUpperCase() !== w[0]) li.querySelector('.said').textContent = `"${w[2]}"`;
+      li.querySelector('.star').addEventListener('click', () => { words.unshift(words.splice(i, 1)[0]); changed(); });
+      li.querySelector('.del').addEventListener('click', () => {
+        if (words.length <= 1) return; // always keep at least one word
+        words.splice(i, 1);
+        changed();
+      });
+      list.appendChild(li);
+    });
+  }
+  function changed() {
+    saveWords();
+    spellBag = [];
+    firstWord = true;
+    showWords();
+  }
+  document.getElementById('w-add').addEventListener('click', () => {
+    const word = document.getElementById('w-word').value.toUpperCase().replace(/[^A-Z]/g, '');
+    if (!word) { document.getElementById('w-word').focus(); return; }
+    const pic = document.getElementById('w-pic').value.trim();
+    const say = document.getElementById('w-say').value.trim() || word.charAt(0) + word.slice(1).toLowerCase();
+    words = words.filter(w => w[0] !== word); // no doubles
+    words.push([word, pic, say]);
+    ['w-word', 'w-pic', 'w-say'].forEach(id => { document.getElementById(id).value = ''; });
+    changed();
+  });
+  document.getElementById('w-word').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('w-add').click(); });
+  document.getElementById('w-reset').addEventListener('click', () => {
+    if (!confirm('Go back to the original word list?')) return;
+    words = DEFAULT_WORDS.map(w => w.slice());
+    changed();
+  });
+  document.getElementById('words-lock').addEventListener('click', () => {
+    Sound.unlock();
+    Gate.ask(() => { showWords(); panel.hidden = false; });
+  });
+  document.getElementById('words-close').addEventListener('click', () => {
+    panel.hidden = true;
+    newGame(); // start again with the new list
+  });
+
   // Handy for poking at the game from the browser console.
   window.balloonPop = { get balloons() { return balloons; }, get popped() { return popped; }, get spell() { return spell; } };
 
