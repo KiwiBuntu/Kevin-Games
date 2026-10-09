@@ -21,7 +21,8 @@ www/                    ← upload this folder to the web server
 ├── games/paint/        ← Paint & Colour
 ├── games/garage/       ← Parking Garage
 ├── games/read/         ← Read Along (stories read aloud)
-└── games/tower/        ← Number Tower
+├── games/tower/        ← Number Tower
+└── games/cubes/        ← Cube Pop
 ```
 
 ## Test locally

@@ -157,6 +157,19 @@ const Sound = (() => {
         tone({ freq: 494, type: 'square', dur: 0.16, vol: 0.06, delay: d });
       }
     },
+    // Blaster shot: "pew!"
+    zap() {
+      tone({ freq: 1500, to: 300, type: 'square', dur: 0.12, vol: 0.05 });
+      tone({ freq: 900, to: 200, type: 'sine', dur: 0.14, vol: 0.12 });
+    },
+    // A block popping: notes from a pentatonic scale, so any run of pops sounds like a tune.
+    popNote(n) {
+      const scale = [523, 587, 659, 784, 880];
+      const f = scale[n % 5] * 2 ** Math.floor(n / 5 % 3);
+      tone({ freq: f, type: 'triangle', dur: 0.16, vol: 0.16 });
+      tone({ freq: f * 2, type: 'sine', dur: 0.08, vol: 0.05 });
+      noise({ dur: 0.05, vol: 0.12, freq: 2500 });
+    },
     // Web shooting out: "thwip!"
     thwip() {
       noise({ dur: 0.12, vol: 0.25, freq: 4000 });
