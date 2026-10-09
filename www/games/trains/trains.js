@@ -65,6 +65,7 @@
   }
 
   function newGame() {
+    Guard.round(size);
     const cfg = Yard.LEVELS[size];
     const rect = canvas.getBoundingClientRect();
     const aspect = rect.height / Math.max(1, rect.width);
@@ -155,6 +156,7 @@
       t.shake = 1;
       t.blockAt = b;
       Sound.bonk();
+      Guard.count('🚫 blocked tap');
       if (navigator.vibrate) navigator.vibrate(60);
     } else {
       t.state = 'leaving';
@@ -167,6 +169,7 @@
   function showHint() {
     Sound.unlock();
     if (won) return;
+    Guard.count('💡 hint');
     const occ = occupancy();
     const free = trains.filter(t => t.state === 'idle' && !Yard.blocker(cols, rows, t, occ));
     if (!free.length) return;

@@ -74,6 +74,7 @@
 
   // ---------- setup
   function newGame() {
+    Guard.round(size);
     Win.hide();
     [rows, cols] = SIZES[size];
     const others = Scenes.LIST.filter(s => s !== scene);

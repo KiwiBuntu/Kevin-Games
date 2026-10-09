@@ -84,6 +84,7 @@
     step++;
     if (step >= song.notes.length) {
       step = 0;
+      Guard.count(`🎶 played ${song.name}`);
       els.forEach(e => e.classList.remove('glow'));
       setTimeout(() => {
         Sound.cheer();

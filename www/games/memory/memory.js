@@ -58,6 +58,7 @@
   }
 
   function newGame() {
+    Guard.round(size);
     Win.hide();
     clearTimeout(flipBackTimer);
     first = second = null;
@@ -139,6 +140,7 @@
       setTimeout(() => {
         if (second !== card) return;
         first.el.classList.add('wrong');
+        Guard.count('❌ wrong pair');
         second.el.classList.add('wrong');
         Sound.nope();
       }, 350);
@@ -158,6 +160,7 @@
     Sound.unlock();
     Sound.pop();
     themeIdx = (themeIdx + 1) % THEMES.length;
+    Guard.count(`theme ${THEMES[themeIdx].icon}`);
     try { localStorage.setItem('kg-memory-theme', String(themeIdx)); } catch (e) {}
     newGame();
   });

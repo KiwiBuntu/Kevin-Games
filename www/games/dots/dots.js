@@ -130,6 +130,7 @@
   function newGame(advance) {
     Win.hide();
     if (advance) picIdx = (picIdx + 1) % PICTURES.length;
+    Guard.round(pic().name);
     next = 0;
     done = false;
     reveal = 0;
@@ -169,6 +170,7 @@
         wobble[wrong] = 1;
         wobble[next] = 1;
         Sound.nope();
+        Guard.count('❌ wrong dot');
       }
     }
   }

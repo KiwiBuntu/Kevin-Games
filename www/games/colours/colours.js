@@ -49,6 +49,7 @@
 
   // ---------- setup
   function newGame() {
+    Guard.round(size);
     Win.hide();
     const pz = Puzzle.generate(Puzzle.LEVELS[size]);
     n = pz.n;
@@ -183,6 +184,7 @@
     if (won) return;
     const open = pairs.map((p, k) => k).filter(k => !pairs[k].joined);
     if (!open.length) return;
+    Guard.count('💡 hint');
     hint = { pair: open[Math.floor(Math.random() * open.length)], t: 3 };
     Sound.sparkle();
   }

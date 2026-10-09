@@ -81,6 +81,7 @@
 
   // ---------- setup
   function newGame() {
+    Guard.round(size);
     Win.hide();
     const n = SIZES[size];
     const rect = canvas.getBoundingClientRect();
@@ -173,6 +174,7 @@
   function showHint() {
     Sound.unlock();
     if (won) return;
+    Guard.count('💡 hint');
     hint = { path: route(here(), goal), t: 3 };
     Sound.sparkle();
   }

@@ -6,7 +6,8 @@ Ad-free, offline-friendly games for a 5 year old, built with plain HTML + JavaSc
 
 ```
 www/                    ← upload this folder to the web server
-├── index.html          ← game picker
+├── index.html          ← game picker (faded 🔒 bottom-left → Grown-ups)
+├── grown-ups/          ← time limits, game locks, play stats (behind the sum lock)
 ├── manifest.json, sw.js, icons/   ← "Add to Home Screen" app + offline support
 ├── shared/             ← styles, sound effects, confetti, "Hooray!" screen, grown-up sum lock
 ├── games/trains/       ← Train Yard
@@ -55,3 +56,14 @@ See [GAME-IDEAS.md](GAME-IDEAS.md).
 
 Animal sounds in Animal Piano are CC0 recordings from [BigSoundBank](https://bigsoundbank.com) — details in `www/games/piano/sounds/CREDITS.md`.
 Saved paintings stay on the device they were made on (browser storage); use 📤 in the gallery to keep a copy in Photos.
+
+## Grown-ups (supervision)
+
+Tap the faded 🔒 at the bottom-left of the home screen and solve the sum:
+
+- **Time limits** — daily play time and a bedtime. When time's up a "Time for a break!" screen covers the games; a grown-up can tap its 🔒 for 15 more minutes.
+- **Games** — switch any game off (greyed out with a 🔒).
+- **Play stats** — plays, active minutes (only while being touched), last 14 days, per-level tries/wins/fails/quits, help used, and a "worth a look" list (stuck levels, sums he gets wrong, games dropped).
+- **📤 Send stats** — share a small file + summary (email / WhatsApp); open it on any device with **📥 View a stats file**.
+
+All of it is stored only on the device (`localStorage`: `kg-guard`, `kg-stats`). Games report events through `shared/guard.js` (`Guard.round()`, `Guard.count()`, `Guard.best()`; wins are recorded by `Win.show`).

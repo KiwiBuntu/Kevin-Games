@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#7fd3ff">
+  <title>Grown-ups</title>
+  <link rel="manifest" href="../manifest.json">
+  <link rel="icon" href="../icons/icon-192.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;700&display=swap">
+  <link rel="stylesheet" href="../shared/style.css">
+  <style>
+    html, body { height: auto; min-height: 100%; overflow: auto; background: #f4f5fa; user-select: text; -webkit-user-select: text; }
+    main { max-width: 860px; margin: 0 auto; padding: max(14px, env(safe-area-inset-top)) 14px 60px; }
+    main[hidden] { display: none; }
+    header { display: flex; align-items: center; gap: 12px; }
+    header h1 { margin: 0; flex: 1; font-size: 32px; }
+    section { background: #fff; border: 4px solid var(--ink); border-radius: 22px; box-shadow: 0 6px 0 var(--ink); padding: 16px 18px; margin: 18px 0; }
+    h2 { margin: 0 0 10px; font-size: 24px; }
+    h3 { margin: 16px 0 6px; font-size: 18px; }
+    .note { color: #666; font-size: 15px; margin: 6px 0; }
+    .seg { display: flex; flex-wrap: wrap; gap: 8px; }
+    .seg button, .chip {
+      font: inherit; font-weight: 700; padding: 7px 14px; border-radius: 14px; border: 3px solid var(--ink); background: #f2f2f6; cursor: pointer;
+    }
+    .seg button.on { background: var(--sun); }
+    .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+    select, input[type=time] { font: inherit; padding: 6px 8px; border: 3px solid var(--ink); border-radius: 12px; background: #fff; }
+    .meter { height: 18px; border: 3px solid var(--ink); border-radius: 10px; overflow: hidden; background: #eee; margin: 8px 0; }
+    .meter i { display: block; height: 100%; background: #8ac926; }
+    .games-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; }
+    .toggle { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border: 3px solid var(--ink); border-radius: 14px; cursor: pointer; font-weight: 700; background: #c9f7c2; }
+    .toggle.off { background: #e3e6ee; color: #888; text-decoration: line-through; }
+    .toggle .e { font-family: var(--emoji); font-size: 24px; }
+    .bars { display: flex; align-items: flex-end; gap: 4px; height: 120px; border-bottom: 3px solid var(--ink); padding-bottom: 2px; }
+    .bars div { flex: 1; background: #3a86ff; border-radius: 6px 6px 0 0; min-height: 2px; position: relative; }
+    .bars div.today { background: #ff9f1c; }
+    .bars-labels { display: flex; gap: 4px; font-size: 11px; color: #777; }
+    .bars-labels span { flex: 1; text-align: center; }
+    table { width: 100%; border-collapse: collapse; font-size: 16px; }
+    th, td { text-align: left; padding: 6px 6px; border-bottom: 2px solid #eee; }
+    th { font-size: 14px; color: #666; }
+    td.num, th.num { text-align: right; }
+    tr.game { cursor: pointer; }
+    tr.game:hover { background: #fafafa; }
+    tr.detail td { background: #fbfbfe; font-size: 14px; }
+    .e { font-family: var(--emoji); }
+    .flag { color: #d62828; font-weight: 700; }
+    .btn.small { height: 46px; font-size: 18px; border-radius: 12px; font-family: var(--font); }
+    .viewing { background: #fff3b0; border-color: #e0b400; }
+    .viewing[hidden] { display: none; }
+    pre { white-space: pre-wrap; font-size: 13px; background: #f6f6fa; padding: 10px; border-radius: 10px; max-height: 260px; overflow: auto; }
+  </style>
+</head>
+<body>
+  <main id="main" hidden>
+    <header>
+      <a class="btn round" href="../index.html" aria-label="Back to the games">🏠</a>
+      <h1>Grown-ups</h1>
+    </header>
+
+    <section class="viewing" id="viewing" hidden>
+      <b>Viewing a stats file</b> <span id="viewing-from"></span>
+      <button class="btn small" id="viewing-back" type="button">↩ Back to this device</button>
+    </section>
+
+    <section id="limits">
+      <h2><span class="e">⏰</span> Time limits</h2>
+      <h3>Daily play time</h3>
+      <div class="seg" id="daily"></div>
+      <div class="meter"><i id="today-bar"></i></div>
+      <p class="note" id="today-note"></p>
+      <h3>Bedtime (games asleep)</h3>
+      <div class="row">
+        <label>From <input type="time" id="bed-from"></label>
+        <label>until <input type="time" id="bed-to"></label>
+        <button class="btn small" id="bed-off" type="button">No bedtime</button>
+      </div>
+      <p class="note">When time's up, a friendly "Time for a break!" screen covers the games. Tap its faint 🔒 and solve the sum to give 15 more minutes today.</p>
+      <button class="btn small" id="extra" type="button">➕ 15 more minutes today</button>
+    </section>
+
+    <section id="locks">
+      <h2><span class="e">🎮</span> Games Kevin can play</h2>
+      <p class="note">Tap to switch a game off. Switched-off games are greyed out with a 🔒 on the home screen.</p>
+      <div class="games-list" id="games"></div>
+    </section>
+
+    <section id="stats">
+      <h2><span class="e">📊</span> Play stats</h2>
+      <p class="note" id="since"></p>
+      <h3>Minutes played, last 14 days</h3>
+      <div class="bars" id="bars"></div>
+      <div class="bars-labels" id="bar-labels"></div>
+      <h3>Games <span class="note">(tap a game for its levels and details)</span></h3>
+      <table>
+        <thead><tr><th>Game</th><th class="num">Plays</th><th class="num">Minutes</th><th class="num">This week</th><th>Last played</th></tr></thead>
+        <tbody id="table"></tbody>
+      </table>
+      <h3>Worth a look</h3>
+      <ul id="notes"></ul>
+    </section>
+
+    <section id="share">
+      <h2><span class="e">📤</span> Send or view stats</h2>
+      <div class="row">
+        <button class="btn small" id="send" type="button">📤 Send stats</button>
+        <button class="btn small" id="copy" type="button">📋 Copy summary</button>
+        <button class="btn small" id="open-file" type="button">📥 View a stats file</button>
+        <input type="file" id="file" accept=".json,application/json" hidden>
+      </div>
+      <p class="note">"Send" opens the tablet's share menu (Email, WhatsApp…) with a small stats file and a written summary. Open that file here, on any device, with "View a stats file". Nothing is sent anywhere unless you send it.</p>
+      <details><summary class="note">Summary preview</summary><pre id="summary"></pre></details>
+      <h3>Reset</h3>
+      <button class="btn small" id="reset" type="button">🗑️ Clear all stats</button>
+    </section>
+  </main>
+
+  <script src="../shared/sound.js"></script>
+  <script src="../shared/gate.js"></script>
+  <script src="../shared/guard.js"></script>
+  <script src="grownups.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) navigator.serviceWorker.register('../sw.js').catch(() => {});
+  </script>
+</body>
+</html>

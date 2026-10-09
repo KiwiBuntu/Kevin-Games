@@ -114,6 +114,7 @@
   }
 
   function newGame() {
+    Guard.round(MODES[modeIdx].icon);
     Win.hide();
     balloons = [];
     bits = [];
@@ -207,6 +208,7 @@
     showSpell();
     spellEl.classList.add('yay');
     wordsSpelled++;
+    Guard.count(`spelled ${spell.text}`);
     showProgress();
     setTimeout(() => {
       Sound.say(`${spell.name}! ${Sound.praise()}`);

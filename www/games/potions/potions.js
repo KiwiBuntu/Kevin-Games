@@ -31,6 +31,7 @@
 
   // ---------- setting up
   function startLevel(n, keepSame) {
+    Guard.round(`L${n}`);
     Win.hide();
     level = n;
     saved.level = n;
@@ -344,6 +345,7 @@
     } else {
       // can this still be finished from here? If not, the wand glows (and the spare flask is offered)
       stuck = Puzzle.solve(flasks, 20000) === -1;
+      if (stuck) Guard.count('😬 got stuck');
     }
     updateButtons();
   }
@@ -353,6 +355,7 @@
     Sound.unlock();
     if (anim || !history.length || won) return;
     flasks = history.pop();
+    Guard.count('🪄 undo');
     corks = corks.filter(c => Puzzle.done(flasks[c.i]));
     selected = -1;
     stuck = Puzzle.solve(flasks, 20000) === -1;
@@ -364,6 +367,7 @@
     Sound.unlock();
     if (anim || spareUsed || won) return;
     spareUsed = true;
+    Guard.count('🧪 spare flask');
     flasks.push([]);
     history = history.map(h => h.concat([[]])); // undo keeps the spare flask
     lift.push(0);

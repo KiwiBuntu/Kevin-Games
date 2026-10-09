@@ -172,6 +172,7 @@
 
   // ---------- playing
   function start(i) {
+    Guard.round(`L${i + 1}`);
     Win.hide();
     $('#out').hidden = true;
     li = i;
@@ -358,6 +359,9 @@
     // each cascade step plays a higher note
     Sound.note([523, 587, 659, 698, 784, 880, 988, 1047, 1175, 1319][Math.min(9, ev.combo - 1)]);
     if (ev.made.length) Sound.sparkle();
+    ev.made.forEach(m => Guard.count(`made ${{ h: 'striped', v: 'striped', bomb: 'wrapped', rainbow: 'rainbow' }[m.sp]}`));
+    ev.blasts.filter(b => ['cross', 'bigcross', 'bigbomb', 'all'].includes(b.type)).forEach(b => Guard.count(`combo ${b.type}`));
+    if (ev.combo >= 4) Guard.count('cascade 4+');
     if (ev.combo === 3 || (ev.combo > 3 && ev.combo % 2 === 1) || ev.pops.length >= 12) {
       const word = CHEERS[Math.floor(Math.random() * CHEERS.length)];
       banner(word);
@@ -386,6 +390,8 @@
     const L = Levels.LIST[li];
     const left = moves / L.moves;
     const stars = bonusUsed ? 1 : left >= 0.3 ? 3 : left >= 0.1 ? 2 : 1;
+    Guard.count(`L${li + 1} ${'⭐'.repeat(stars)}`);
+    if (bonusUsed) Guard.count('won with 🎁 +5');
     progress.stars[li] = Math.max(progress.stars[li] || 0, stars);
     saveProgress();
     const next = li + 1 < Levels.LIST.length ? li + 1 : li;
@@ -393,6 +399,8 @@
   }
 
   function outOfMoves() {
+    Guard.failed();
+    Guard.count(`L${li + 1} out of moves`);
     goalChips($('#out-left'));
     $('#bonus').hidden = bonusUsed;
     $('#out').hidden = false;
@@ -402,6 +410,8 @@
   $('#bonus').addEventListener('click', () => {
     Sound.unlock();
     bonusUsed = true;
+    Guard.count('🎁 +5 used');
+    Guard.round(`L${li + 1} +5`);
     moves += 5;
     showGoals();
     $('#out').hidden = true;
@@ -517,7 +527,7 @@
         idle += dt;
         if (idle > HINT_AFTER && !hint) {
           const ms = board.findMoves().sort((a, b) => b.value - a.value);
-          if (ms.length) hint = ms[0];
+          if (ms.length) { hint = ms[0]; Guard.count('💡 hint shown'); }
         }
       }
       draw(dt);

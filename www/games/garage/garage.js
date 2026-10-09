@@ -74,6 +74,7 @@
   }
 
   function setup(puzzle) {
+    Guard.round(size);
     const cfg = Lot.LEVELS[size];
     n = cfg.n;
     const order = COLOURS.map((c, i) => i).sort(() => Math.random() - 0.5);
@@ -196,6 +197,7 @@
     const sol = Lot.solve(n, cars, pos, out);
     if (!sol || !sol.first) return;
     hint = { ...sol.first, t: 3.5 };
+    Guard.count('💡 hint');
     Sound.sparkle();
   }
 
@@ -203,6 +205,7 @@
     Sound.unlock();
     if (!undo.length || won || loading) return;
     const u = undo.pop();
+    Guard.count('↩️ undo');
     pos = u.pos;
     out = u.out;
     out.forEach((o, i) => { if (!o) { leaving[i] = 0; } });

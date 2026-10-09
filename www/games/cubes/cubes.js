@@ -156,6 +156,7 @@
 
   // ---------- playing
   function start(i) {
+    Guard.round(`L${i + 1}`);
     Win.hide();
     level = i;
     blocks = Levels.blocksFor(i);
@@ -246,7 +247,7 @@
       return;
     }
     if (col !== '*') Sound.say(C[col][1]);
-    else { Sound.sparkle(); rainbowReady = false; sinceRainbow = 0; }
+    else { Sound.sparkle(); rainbowReady = false; sinceRainbow = 0; Guard.count('🌈 rainbow'); }
     fire(targets, btn, col);
   }
 

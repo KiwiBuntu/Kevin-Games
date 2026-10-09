@@ -195,6 +195,7 @@
 
   function openBook(b) {
     book = b;
+    Guard.count(`📖 opened ${b.title}`);
     reader = null;
     $('#who').hidden = true;
     loadReaders();
@@ -450,6 +451,8 @@
     const end = $('.the-end');
     if (end) { end.hidden = false; fitText(); }
     book.finished = true;
+    Guard.count(`🏁 finished ${book.title}`);
+    Guard.count(`read by ${reader ? reader.name : 'computer voice'}`);
     saveSpot();
     DB.put(book).catch(() => {});
     Sound.cheer();

@@ -1,6 +1,6 @@
 // Offline support: serve from cache straight away, refresh the cache in the background.
 // Bump VERSION whenever files are added so phones pick up the new list.
-const VERSION = 'kg-v33';
+const VERSION = 'kg-v34';
 const FILES = [
   './',
   './index.html',
@@ -12,6 +12,9 @@ const FILES = [
   './shared/celebrate.js',
   './shared/win.js',
   './shared/gate.js',
+  './shared/guard.js',
+  './grown-ups/index.html',
+  './grown-ups/grownups.js',
   './games/trains/index.html',
   './games/trains/yard.js',
   './games/trains/trains.js',

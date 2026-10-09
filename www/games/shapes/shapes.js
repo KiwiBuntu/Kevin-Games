@@ -57,6 +57,7 @@
   const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 
   function newGame() {
+    Guard.round(size);
     Win.hide();
     const picks = shuffle(SHAPES.slice()).slice(0, SIZES[size]);
     const colours = shuffle(COLOURS.slice());
@@ -164,6 +165,7 @@
     } else if (hole) {
       hole.wiggle = 1; // not that one!
       Sound.boing();
+      Guard.count('❌ wrong hole');
     }
   }
 

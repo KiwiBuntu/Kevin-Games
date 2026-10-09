@@ -28,6 +28,7 @@ const Win = (() => {
     show({ picture = '🎉', again, home = '../../index.html' }) {
       if (!el) build(home);
       onAgain = again;
+      if (typeof Guard !== 'undefined') Guard.won();
       el.querySelector('.win-pic').textContent = picture;
       Sound.cheer();
       Celebrate.burst();

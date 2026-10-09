@@ -276,6 +276,7 @@
       };
       await DB.put(item);
       currentId = item.id;
+      Guard.count(drawing ? '💾 saved drawing' : '💾 saved colouring');
       Sound.snap();
       Sound.say('Saved!');
       showToast('Saved! <span>🖼️</span>');
@@ -368,6 +369,7 @@
     Sound.unlock();
     Sound.pop();
     drawing = !drawing;
+    Guard.count(drawing ? '✏️ free drawing' : '🖍️ colouring');
     newPage();
     Sound.say(drawing ? 'Draw with your finger!' : 'Tap to colour in!');
   });

@@ -86,6 +86,7 @@
   let hero = { x: 0, y: 0, aim: -Math.PI / 2, cheer: 0 };
 
   function start(m) {
+    Guard.round(Quiz.MODES[m].name);
     mode = m;
     floor = 0;
     slot = 1;
@@ -200,6 +201,8 @@
     floor++;
     slot = choiceSlots[i];
     trail[floor] = { slot, value: q.answer };
+    Guard.best(`top floor ${Quiz.MODES[mode].name}`, floor);
+    Guard.count(`✔️ ${Quiz.MODES[q.mode].name}`);
     hero.cheer = 1;
     const isBest = floor > (best[mode] || 0);
     if (isBest) { best[mode] = floor; store.set('kg-tower-best', best); }
@@ -441,6 +444,7 @@
           } else {
             Sound.boing();
             wrong.add(anim.i);
+            Guard.count(`❌ ${Quiz.MODES[q.mode].name}`);
             wrongTries++;
             if (navigator.vibrate) navigator.vibrate(40);
             showAsk(); // picture help may appear now
