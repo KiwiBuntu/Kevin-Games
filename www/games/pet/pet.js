@@ -782,6 +782,8 @@
   Guard.round('visit');
   update(true);
   setInterval(() => { if (document.visibilityState === 'visible') update(false); }, 10000);
+  // while napping, update often so the energy bar visibly fills and it wakes on time
+  setInterval(() => { const q = pet(); if (document.visibilityState === 'visible' && q.asleep && !Care.isNight(Date.now(), bed())) update(false); }, 1000);
   if (pet().stage === 'egg') Sound.intro('Tap the egg to help it hatch!');
   else Sound.intro('Look after your pet! Feed it, wash it, and turn the light off at bedtime.');
   requestAnimationFrame(loop);

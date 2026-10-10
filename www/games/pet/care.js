@@ -18,7 +18,7 @@ const Care = (() => {
   const POOP_EVERY = { gentle: 4, normal: 3 }; // hours between poops after eating
   // While he's playing, things happen much faster so there's always something to do:
   // points lost per MINUTE (each need takes ~7–20 minutes to start asking), a poop ~4 min after eating.
-  const PLAY = { gentle: { food: 7, fun: 9, clean: 3, energy: 4 }, normal: { food: 9, fun: 11, clean: 4, energy: 5 } };
+  const PLAY = { gentle: { food: 7, fun: 9, clean: 3, energy: 1.8 }, normal: { food: 9, fun: 11, clean: 4, energy: 2.4 } };
   const PLAY_POOP_MIN = 4;
   const CALM_MS = 40 * 1000;               // after looking after it, it's content for a little while
   const LOVE_TO_GROW = 100;
@@ -84,7 +84,7 @@ const Care = (() => {
       n.food = clamp(n.food - r.food * per * slow, Math.min(n.food, floor));
       n.fun = clamp(n.fun - r.fun * per * slow, Math.min(n.fun, floor));
       n.clean = clamp(n.clean - (r.clean + pet.poops * (live ? 1 : 3)) * per * slow, Math.min(n.clean, floor));
-      n.energy = pet.asleep ? clamp(n.energy + (live ? 45 * 60 : 25) * h) : clamp(n.energy - r.energy * per * slow, Math.min(n.energy, floor));
+      n.energy = pet.asleep ? clamp(n.energy + (live ? 180 * 60 : 25) * h) : clamp(n.energy - r.energy * per * slow, Math.min(n.energy, floor));
       // poops a while after eating (not while asleep); at most 3 waiting
       if (!pet.asleep) {
         pet.sinceMeal += h;
@@ -266,7 +266,7 @@ const Care = (() => {
     if (pet.asleep) return null;
     const bored = pet.needs.fun < 60;
     pet.needs.fun = clamp(pet.needs.fun + amount);
-    pet.needs.energy = clamp(pet.needs.energy - amount * 0.15);
+    pet.needs.energy = clamp(pet.needs.energy - amount * 0.07);
     pet.needs.food = clamp(pet.needs.food - amount * 0.1);
     return addLove(state, pet, bored ? 5 : 1, now);
   }
