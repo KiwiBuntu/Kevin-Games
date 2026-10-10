@@ -212,7 +212,7 @@ const Levels = (() => {
   }
   const painted = new Set();
 
-  return { COLOURS, LIST, blocksFor };
+  return { COLOURS, LIST, blocksFor, SPLIT };
 })();
 
 if (typeof module !== 'undefined') module.exports = Levels;

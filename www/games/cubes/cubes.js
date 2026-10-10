@@ -190,7 +190,8 @@
     // fit the model whichever way it is turned
     const across = Math.hypot(size[0], size[2]) + 0.6;
     const tall = size[1] * Math.cos(PITCH) + Math.hypot(size[0], size[2]) * Math.sin(PITCH) + 0.6;
-    vw.S = Math.min((vw.w - 30) / across, (vw.h - 50) / tall, 90);
+    // same size on screen as the original design: blocks are split, so they are drawn smaller
+    vw.S = Math.min((vw.w - 30) / across, (vw.h - 50) / tall, 90 / Levels.SPLIT);
     vw.ox = vw.w / 2;
     vw.oy = vw.h / 2;
   }
