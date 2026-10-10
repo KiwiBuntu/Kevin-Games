@@ -84,7 +84,7 @@ const Care = (() => {
       n.food = clamp(n.food - r.food * per * slow, Math.min(n.food, floor));
       n.fun = clamp(n.fun - r.fun * per * slow, Math.min(n.fun, floor));
       n.clean = clamp(n.clean - (r.clean + pet.poops * (live ? 1 : 3)) * per * slow, Math.min(n.clean, floor));
-      n.energy = pet.asleep ? clamp(n.energy + (live ? 15 * 60 : 25) * h) : clamp(n.energy - r.energy * per * slow, Math.min(n.energy, floor));
+      n.energy = pet.asleep ? clamp(n.energy + (live ? 45 * 60 : 25) * h) : clamp(n.energy - r.energy * per * slow, Math.min(n.energy, floor));
       // poops a while after eating (not while asleep); at most 3 waiting
       if (!pet.asleep) {
         pet.sinceMeal += h;

@@ -1,6 +1,6 @@
 // Offline support: serve from cache straight away, refresh the cache in the background.
 // Bump VERSION whenever files are added so phones pick up the new list.
-const VERSION = 'kg-v39';
+const VERSION = 'kg-v40';
 const FILES = [
   './',
   './index.html',
