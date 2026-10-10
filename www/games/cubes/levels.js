@@ -144,7 +144,10 @@ const Levels = (() => {
     },
   ];
 
-  // Blocks for level i, moved so the smallest x, y, z are 0.
+  // Blocks for level i. Each block of the design is split into 2×2×2 smaller blocks.
+  // The outside keeps the picture; underneath, every layer of the "onion" has its own
+  // mix of colours (in clumps), so peeling it uncovers new colours layer by layer.
+  const SPLIT = 2;
   function blocksFor(i) {
     const L = LIST[i];
     const m = maker();
@@ -153,9 +156,61 @@ const Levels = (() => {
     let mx = Infinity, my = Infinity, mz = Infinity;
     for (const k of m.blocks.keys()) { const [x, y, z] = k.split(',').map(Number); mx = Math.min(mx, x); my = Math.min(my, y); mz = Math.min(mz, z); }
     const out = new Map();
-    for (const [k, c] of m.blocks) { const [x, y, z] = k.split(',').map(Number); out.set(`${x - mx},${y - my},${z - mz}`, c); }
-    return out;
+    for (const [k, c] of m.blocks) {
+      const [x, y, z] = k.split(',').map(Number);
+      for (let a = 0; a < SPLIT; a++) for (let b = 0; b < SPLIT; b++) for (let d = 0; d < SPLIT; d++) {
+        out.set(`${(x - mx) * SPLIT + a},${(y - my) * SPLIT + b},${(z - mz) * SPLIT + d}`, c);
+      }
+    }
+    return onion(out, i);
   }
+
+  // How deep each block is: 1 = on the outside, 2 = just under that, and so on.
+  function depths(blocks) {
+    const depth = new Map();
+    const N = [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]];
+    let frontier = [];
+    for (const k of blocks.keys()) {
+      const [x, y, z] = k.split(',').map(Number);
+      if (N.some(([dx, dy, dz]) => !blocks.has(`${x + dx},${y + dy},${z + dz}`))) { depth.set(k, 1); frontier.push([x, y, z]); }
+    }
+    for (let d = 2; frontier.length; d++) {
+      const next = [];
+      for (const [x, y, z] of frontier) for (const [dx, dy, dz] of N) {
+        const k = `${x + dx},${y + dy},${z + dz}`;
+        if (blocks.has(k) && !depth.has(k)) { depth.set(k, d); next.push([x + dx, y + dy, z + dz]); }
+      }
+      frontier = next;
+    }
+    return depth;
+  }
+
+  function onion(blocks, seed) {
+    let s = (seed + 1) * 9973;
+    const rand = () => (s = (s * 16807) % 2147483647) / 2147483647;
+    const depth = depths(blocks);
+    // colours for the inside: the model's own colours plus a couple of surprises
+    const own = [...new Set(blocks.values())];
+    const extras = Object.keys(COLOURS).filter(c => !own.includes(c) && c !== 'W' && c !== 'D');
+    const pool = own.concat(extras.sort(() => rand() - 0.5).slice(0, 2));
+    // each layer gets its own 2–3 colours, painted in clumps
+    const byLayer = new Map();
+    const sorted = [...depth.entries()].filter(([, d]) => d > 1).sort((a, b) => a[1] - b[1]);
+    for (const [k, d] of sorted) {
+      if (!byLayer.has(d)) byLayer.set(d, pool.slice().sort(() => rand() - 0.5).slice(0, 3));
+      const pal = byLayer.get(d);
+      const [x, y, z] = k.split(',').map(Number);
+      // copy an already-painted neighbour in the same layer most of the time → clumps
+      const nb = [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]]
+        .map(([dx, dy, dz]) => `${x + dx},${y + dy},${z + dz}`)
+        .filter(n => depth.get(n) === d && painted.has(n));
+      blocks.set(k, nb.length && rand() < 0.6 ? blocks.get(nb[Math.floor(rand() * nb.length)]) : pal[Math.floor(rand() * pal.length)]);
+      painted.add(k);
+    }
+    painted.clear();
+    return blocks;
+  }
+  const painted = new Set();
 
   return { COLOURS, LIST, blocksFor };
 })();

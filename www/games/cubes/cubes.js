@@ -180,6 +180,7 @@
   }
 
   function layout() {
+    needsDraw = true;
     const r = canvas.getBoundingClientRect();
     const dpr = window.devicePixelRatio || 1;
     vw.w = r.width; vw.h = r.height;
@@ -196,6 +197,7 @@
 
   // After anything changes: what can we see now, and which blasters are there?
   function refresh() {
+    needsDraw = true;
     visible = visibleFrom(VIEWS[view]);
     // Only colours you can actually reach (from some side) get a blaster;
     // buried ones turn up as soon as they're uncovered.
@@ -258,7 +260,7 @@
     // nearest blocks first, so the pops ripple across the model
     const pos = k => { const [x, y, z] = k.split(',').map(Number); return project(x, y, z, yaw, vw.S, vw.ox, vw.oy); };
     targets.sort((a, b) => pos(b).y - pos(a).y);
-    const gap = Math.max(35, Math.min(110, 900 / targets.length));
+    const gap = Math.max(16, Math.min(90, 1100 / targets.length)); // lots of small blocks: quicker shots
     targets.forEach((k, i) => setTimeout(() => {
       Sound.zap();
       const to = pos(k);
@@ -271,7 +273,7 @@
         if (shots.length || popping.size) { requestAnimationFrame(wait); return; }
         busy = false;
         if (!blocks.size) { won(); return; }
-        if (col !== '*' && ++sinceRainbow >= 5 && blocks.size > 8) rainbowReady = true;
+        if (col !== '*' && ++sinceRainbow >= 8 && blocks.size > 30) rainbowReady = true;
         refresh();
       };
       wait();
@@ -306,6 +308,7 @@
   }
 
   let drag = null;
+  let needsDraw = true, wasMoving = false;
   canvas.addEventListener('pointerdown', e => {
     Sound.unlock();
     if (busy) return;
@@ -426,11 +429,17 @@
         if (p.t >= 1) { popping.delete(k); blocks.delete(k); }
       }
       wobble = Math.max(0, wobble - dt * 3);
+      let bitsAlive = false;
       for (const p of POOL) {
         if (p.life <= 0) continue;
+        bitsAlive = true;
         p.vy += 900 * dt; p.x += p.vx * dt; p.y += p.vy * dt; p.rot += p.spin * dt; p.life -= dt * 1.2;
       }
-      draw();
+      // only redraw while something is moving (saves the tablet's battery while he thinks)
+      const moving = spin || drag || shots.length || popping.size || wobble > 0 || bitsAlive;
+      if (moving || needsDraw || wasMoving) draw();
+      wasMoving = !!moving;
+      needsDraw = false;
     }
     requestAnimationFrame(loop);
   }
