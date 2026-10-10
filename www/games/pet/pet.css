@@ -91,3 +91,19 @@ body { display: flex; flex-direction: column; background: linear-gradient(#ffe8c
   .nametag { font-size: 20px; }
   .bar .group .btn { width: 46px; height: 46px; min-width: 46px; }
 }
+
+.meter.love b { background: linear-gradient(90deg, #ff5fa2, #ff9ec7) !important; }
+.meter.love.full { animation: needs 0.8s ease-in-out infinite; background: #fff3b0; }
+.toys { display: flex; justify-content: center; gap: 12px; padding: 0 10px 10px; }
+.toys[hidden] { display: none; }
+.toys .btn.act { background: #e8f6ff; }
+.toys .btn.act.on { background: var(--sun); }
+#dress-pet { width: 160px; height: 160px; }
+.outfits { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 8px; }
+.outfits button {
+  width: 70px; height: 70px; border-radius: 18px; border: 4px solid var(--ink); background: #f6f6fa; cursor: pointer;
+  font-family: var(--emoji); font-size: 36px; position: relative;
+}
+.outfits button.on { background: var(--sun); }
+.outfits button.locked { opacity: 0.4; cursor: default; }
+.outfits button .lk { position: absolute; right: -6px; bottom: -6px; font-size: 18px; }

@@ -28,6 +28,7 @@
     <div class="meter" data-need="clean"><span class="emoji">🛁</span><i><b></b></i></div>
     <div class="meter" data-need="energy"><span class="emoji">⚡</span><i><b></b></i></div>
     <div class="meter" data-need="health"><span class="emoji">❤️</span><i><b></b></i></div>
+    <div class="meter love" data-need="love" title="Love — when it's full, your pet grows up!"><span class="emoji">💖</span><i><b></b></i></div>
   </div>
   <div id="stage">
     <canvas id="room"></canvas>
@@ -41,6 +42,22 @@
     <button class="btn act" data-act="bath" aria-label="Bath">🛁</button>
     <button class="btn act" data-act="lights" aria-label="Lights">💡</button>
     <button class="btn act" data-act="medicine" aria-label="Medicine">💊</button>
+    <button class="btn act" data-act="toys" aria-label="Toy box">🧸</button>
+  </div>
+  <div class="toys" id="toys" hidden>
+    <button class="btn act" data-toy="ball" aria-label="Ball">⚽</button>
+    <button class="btn act" data-toy="bubbles" aria-label="Bubbles">🫧</button>
+    <button class="btn act" data-toy="dress" aria-label="Dress up">🎩</button>
+  </div>
+
+  <!-- Dress-up -->
+  <div class="sheet" id="dress" hidden>
+    <div class="card wide">
+      <div class="head"><h2><span class="emoji">🎩</span> Dress up</h2><button class="btn round" id="dress-close" aria-label="Done">✔️</button></div>
+      <canvas id="dress-pet" width="220" height="220"></canvas>
+      <div class="outfits" id="outfits"></div>
+      <p class="note">More things to wear unlock as your pet grows up.</p>
+    </div>
   </div>
 
   <!-- Hatching: pick who's inside, then a name -->

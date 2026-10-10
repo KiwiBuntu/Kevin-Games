@@ -22,7 +22,11 @@
   let squish = 0;
   let bits = [];                               // hearts, bubbles, crumbs, sparkles
   let flying = null;                           // food / medicine on its way to the mouth
-  let bath = false;
+  let bath = false, bathDirty = false;
+  let toy = null;                              // 'ball' | 'bubbles' | null
+  let ball = null;                             // { x, y, vx, vy, held, carried }
+  let floaters = [];                           // bubbles to pop
+  let dragBall = null;
   let visitor = null;                          // { pet, x, target, face, until }
   let lastMood = '';
   let lastSaid = 0;
@@ -71,6 +75,12 @@
     document.querySelectorAll('.act').forEach(b => { b.disabled = !hatched; });
     if (!hatched) return;
     for (const m of document.querySelectorAll('.meter')) {
+      if (m.dataset.need === 'love') {
+        const full = p.stage === 'grown' ? 100 : p.love || 0;
+        m.querySelector('b').style.width = `${full}%`;
+        m.classList.toggle('full', Care.readyTomorrow(p, Date.now()));
+        continue;
+      }
       const v = p.needs[m.dataset.need];
       const bar = m.querySelector('b');
       bar.style.width = `${v}%`;
@@ -79,12 +89,16 @@
     }
     $('[data-act="lights"]').textContent = p.lightsOff ? '🌙' : '💡';
     $('[data-act="bath"]').classList.toggle('on', bath);
+    $('[data-act="toys"]').classList.toggle('on', !$('#toys').hidden);
+    document.querySelectorAll('[data-toy]').forEach(b => b.classList.toggle('on', b.dataset.toy === toy));
   }
 
   // Every 10 seconds (and on opening): time passes, needs change, the pet may ask for something.
   function update(first) {
     const p = pet();
-    const notes = Care.tick(state, Date.now(), bed(), { live: !first });
+    const watching = document.visibilityState === 'visible' && $('#house').hidden && $('#panel').hidden && $('#dress').hidden;
+    const notes = Care.tick(state, Date.now(), bed(), { live: !first && watching });
+    if (notes.grew) grewUp(notes.grew);
     save();
     showNeeds();
     if (p.stage === 'egg') return;
@@ -95,6 +109,7 @@
     } else if (mood !== lastMood || time - lastSaid > 45) {
       const ask = { hungry: "I'm hungry!", sleepy: "I'm sleepy… lights off please!", dirty: "I'm all yucky!", sad: 'Play with me!', sick: "I don't feel well…", ache: 'My tummy hurts!' }[mood];
       if (ask && (mood !== lastMood || time - lastSaid > 90)) say(ask);
+      if (!ask && Care.readyTomorrow(p, Date.now()) && !p.toldTomorrow) { p.toldTomorrow = true; say("My heart is full! I'll grow tomorrow!"); }
     }
     lastMood = mood;
   }
@@ -125,13 +140,17 @@
       flying = { emoji: '💊', t: 0, then: () => {
         const r = Care.medicine(p);
         say(r.say);
+        const g = Care.addLove(state, p, 10, now);
+        if (g) grewUp(g);
         Sound.sparkle();
         sparkle(head.x, head.y, 12);
         Guard.count('💊 medicine');
         afterCare();
       } };
     } else if (kind === 'lights') {
+      const wasTired = p.needs.energy < 40 || Care.isNight(now, bed());
       const r = Care.lights(state, p, now, bed());
+      if (r.asleep && wasTired) { const g = Care.addLove(state, p, 8, now); if (g) grewUp(g); }
       Sound.pop();
       if (p.lightsOff && !r.asleep) say("I'm not tired yet!");
       if (r.asleep) { say('Night night…'); Guard.count('🌙 lights off'); }
@@ -140,11 +159,129 @@
     } else if (kind === 'bath') {
       if (p.asleep) { say('Zzz…', false); return; }
       bath = !bath;
-      if (bath) { say('Splish splash!'); Guard.count('🛁 baths'); } else afterCare();
+      if (bath) { say('Splish splash!'); Guard.count('🛁 baths'); bathDirty = p.needs.clean < 60; stopToy(); } else afterCare();
       showNeeds();
     }
   }
   function afterCare() { save(); showNeeds(); lastMood = Care.mood(pet(), Date.now(), bed()); }
+
+  // ---------- the toy box
+  function stopToy() { toy = null; ball = null; floaters = []; showNeeds(); }
+  function startToy(kind) {
+    Sound.unlock();
+    const p = pet();
+    if (p.stage === 'egg') return;
+    if (kind === 'dress') { openDress(); return; }
+    if (p.asleep) { say('Zzz…', false); return; }
+    if (toy === kind) { stopToy(); return; }
+    bath = false;
+    ball = null; floaters = [];
+    toy = kind;
+    Sound.pop();
+    if (kind === 'ball') {
+      ball = { x: vw.w * 0.5, y: vw.floor - vw.s * 1.1, vx: (Math.random() - 0.5) * 300, vy: 0, carried: false };
+      say('Throw the ball!');
+      Guard.count('🎾 ball');
+    } else {
+      floaters = [];
+      say('Bubbles!');
+      Guard.count('🫧 bubbles');
+    }
+    showNeeds();
+  }
+  function played(amount) {
+    const g = Care.play(state, pet(), amount, Date.now());
+    if (g) grewUp(g);
+    save();
+    showNeeds();
+  }
+
+  // Ball: drag it and let go to throw. The pet chases it and brings it back.
+  function stepBall(dt) {
+    const r = vw.s * 0.09;
+    if (dragBall) return;
+    if (ball.carried) {
+      ball.x = head.x + face * vw.s * 0.12; ball.y = head.y + vw.s * 0.18;
+      if (Math.abs(petX() - vw.w * 0.5) < vw.w * 0.03) { // brought it back: drop it
+        ball.carried = false; ball.vx = (Math.random() - 0.5) * 120; ball.vy = -250;
+        played(10);
+        hearts(head.x, head.y);
+        if (Math.random() < 0.4) say(['Again! Again!', 'Got it!', 'Throw it again!'][Math.floor(Math.random() * 3)]);
+      }
+      return;
+    }
+    ball.vy += 1400 * dt;
+    ball.x += ball.vx * dt; ball.y += ball.vy * dt;
+    if (ball.y > vw.floor - r) { ball.y = vw.floor - r; ball.vy *= -0.55; ball.vx *= 0.8; if (Math.abs(ball.vy) > 120) Sound.note(200 + Math.random() * 60); }
+    if (ball.x < r) { ball.x = r; ball.vx = Math.abs(ball.vx) * 0.7; }
+    if (ball.x > vw.w - r) { ball.x = vw.w - r; ball.vx = -Math.abs(ball.vx) * 0.7; }
+    if (ball.y < r) { ball.y = r; ball.vy = Math.abs(ball.vy); }
+    // the pet picks it up once it has nearly stopped near its feet
+    const resting = Math.abs(ball.vx) < 60 && ball.y > vw.floor - r * 3;
+    if (resting && Math.abs(ball.x - petX()) < vw.s * 0.25 && !pet().asleep) { ball.carried = true; squish = 0.6; Sound.pop(); }
+  }
+
+  // Bubbles: they float up; the pet jumps to pop them (and so can he).
+  function stepBubbles(dt) {
+    if (floaters.length < 5 && Math.random() < dt * 1.2) floaters.push({ x: vw.w * (0.15 + Math.random() * 0.7), y: vw.floor - 10, r: vw.s * (0.06 + Math.random() * 0.05), vy: -(40 + Math.random() * 40), wob: Math.random() * 6 });
+    for (const b of floaters) { b.y += b.vy * dt; b.x += Math.sin(time * 2 + b.wob) * 20 * dt; }
+    // pet pops bubbles that drift past its head
+    for (const b of floaters) {
+      if (Math.hypot(b.x - head.x, b.y - head.y) < vw.s * 0.3 && !b.popped) { b.popped = true; squish = 1; popBubble(b, true); }
+    }
+    floaters = floaters.filter(b => !b.popped && b.y > -b.r);
+  }
+  function popBubble(b, byPet) {
+    for (let i = 0; i < 6; i++) bits.push({ x: b.x, y: b.y, vx: (Math.random() - 0.5) * 160, vy: (Math.random() - 0.5) * 160, life: 0.5, kind: 'bubble', r: 3 + Math.random() * 4 });
+    Sound.note(900 + Math.random() * 500);
+    if (byPet) played(4);
+  }
+
+  // ---------- dress-up
+  const OUTFITS = [
+    { id: 'none', emoji: '🚫', slot: 'all', from: 'baby' },
+    { id: '🎀', emoji: '🎀', slot: 'top', from: 'baby' }, { id: '🌸', emoji: '🌸', slot: 'top', from: 'baby' },
+    { id: '👓', emoji: '👓', slot: 'face', from: 'baby' },
+    { id: '🧢', emoji: '🧢', slot: 'top', from: 'kid' }, { id: '🎩', emoji: '🎩', slot: 'top', from: 'kid' },
+    { id: '🕶️', emoji: '🕶️', slot: 'face', from: 'kid' }, { id: '🥸', emoji: '🥸', slot: 'face', from: 'kid' },
+    { id: '👑', emoji: '👑', slot: 'top', from: 'grown' }, { id: '🤠', emoji: '🤠', slot: 'top', from: 'grown' },
+    { id: '🎓', emoji: '🎓', slot: 'top', from: 'grown' },
+  ];
+  const stageRank = st => ['egg', 'baby', 'kid', 'grown'].indexOf(st);
+  function openDress() {
+    const p = pet();
+    if (p.stage === 'egg') return;
+    p.outfit = p.outfit || {};
+    const list = $('#outfits');
+    list.innerHTML = '';
+    for (const o of OUTFITS) {
+      const b = document.createElement('button');
+      const locked = stageRank(p.stage) < stageRank(o.from);
+      const on = o.id === 'none' ? !p.outfit.top && !p.outfit.face : p.outfit[o.slot] === o.id;
+      b.className = (locked ? 'locked' : '') + (on ? ' on' : '');
+      b.innerHTML = `${o.emoji}${locked ? `<span class="lk">${o.from === 'kid' ? '🌱' : '⭐'}</span>` : ''}`;
+      if (!locked) b.addEventListener('click', () => {
+        if (o.id === 'none') p.outfit = {};
+        else p.outfit[o.slot] = p.outfit[o.slot] === o.id ? undefined : o.id;
+        Sound.pop(); save(); openDress();
+        Guard.count(`🎩 wore ${o.emoji}`);
+      });
+      list.appendChild(b);
+    }
+    const cv = $('#dress-pet'), c = cv.getContext('2d');
+    c.clearRect(0, 0, 220, 220);
+    const info = PetArt.draw(c, { species: p.species, stage: p.stage, mood: 'happy', x: 110, y: 214, s: p.stage === 'grown' ? 200 : 240, t: 0.4, face: 1, noCrown: !!p.outfit.top });
+    wear(c, p, info);
+    $('#dress').hidden = false;
+  }
+  // Draw what it's wearing on top of the pet.
+  function wear(c, p, info) {
+    if (!info || !p.outfit) return;
+    c.textAlign = 'center'; c.textBaseline = 'middle';
+    if (p.outfit.top) { c.font = `${Math.round(info.hr * 1.05)}px "Noto Color Emoji", sans-serif`; c.fillText(p.outfit.top, info.headX, info.headY - info.hr * 0.95); }
+    if (p.outfit.face) { c.font = `${Math.round(info.hr * 0.95)}px "Noto Color Emoji", sans-serif`; c.fillText(p.outfit.face, info.headX, info.headY + (p.outfit.face === '🥸' ? info.hr * 0.15 : -info.hr * 0.05)); }
+  }
+  $('#dress-close').addEventListener('click', () => { Sound.pop(); $('#dress').hidden = true; hearts(head.x, head.y); say(['Do I look nice?', 'Ta-da!', 'I love it!'][Math.floor(Math.random() * 3)]); });
 
   function grewUp(stage) {
     Sound.cheer();
@@ -173,6 +310,7 @@
       const pxp = vw.w * poopSlots[i];
       if (Math.abs(x - pxp) < 40 && Math.abs(y - (vw.floor - 18)) < 40) {
         Care.cleanPoop(p);
+        { const g = Care.addLove(state, p, 4, Date.now()); if (g) grewUp(g); }
         Sound.pop();
         sparkle(pxp, vw.floor - 20, 8);
         Guard.count('💩 cleaned up');
@@ -182,14 +320,32 @@
       }
     }
     if (bath) { rubbing = true; lastRub = { x, y }; canvas.setPointerCapture(e.pointerId); return; }
+    if (toy === 'ball' && ball && !ball.carried && Math.hypot(x - ball.x, y - ball.y) < vw.s * 0.2) {
+      dragBall = { x, y, t: performance.now(), vx: 0, vy: 0 }; canvas.setPointerCapture(e.pointerId); return;
+    }
+    if (toy === 'bubbles') {
+      const b = floaters.find(f => Math.hypot(x - f.x, y - f.y) < f.r + 20);
+      if (b) { b.popped = true; popBubble(b, false); floaters = floaters.filter(f => f !== b); return; }
+    }
     if (onPet(x, y, petX())) {
       if (p.asleep) { say('Zzz…', false); return; }
-      if (Care.tickle(p)) { squish = 1; giggle(); hearts(head.x, head.y); Guard.count('🤗 tickles'); if (Math.random() < 0.35) say(['Hee hee!', 'That tickles!', 'I love you!'][Math.floor(Math.random() * 3)]); save(); showNeeds(); }
+      const bored = p.needs.fun < 60;
+      if (Care.tickle(p)) {
+        if (bored) { const g = Care.addLove(state, p, 2, Date.now()); if (g) grewUp(g); } squish = 1; giggle(); hearts(head.x, head.y); Guard.count('🤗 tickles'); if (Math.random() < 0.35) say(['Hee hee!', 'That tickles!', 'I love you!'][Math.floor(Math.random() * 3)]); save(); showNeeds(); }
       return;
     }
     if (visitor && onPet(x, y, vw.w * visitor.x)) { visitor.squish = 1; giggle(); hearts(vw.w * visitor.x, vw.floor - vw.s * 0.7); visitor.pet.needs.fun = Math.min(100, visitor.pet.needs.fun + 4); }
   });
   canvas.addEventListener('pointermove', e => {
+    if (dragBall) {
+      const r = canvas.getBoundingClientRect();
+      const x = e.clientX - r.left, y = e.clientY - r.top, nowT = performance.now();
+      const dtm = Math.max(1, nowT - dragBall.t) / 1000;
+      dragBall.vx = (x - dragBall.x) / dtm; dragBall.vy = (y - dragBall.y) / dtm;
+      dragBall.x = x; dragBall.y = y; dragBall.t = nowT;
+      ball.x = x; ball.y = Math.min(y, vw.floor - vw.s * 0.09); ball.vx = 0; ball.vy = 0;
+      return;
+    }
     if (!rubbing) return;
     const r = canvas.getBoundingClientRect();
     const x = e.clientX - r.left, y = e.clientY - r.top;
@@ -199,11 +355,22 @@
       const before = pet().needs.clean;
       const now = Care.scrub(pet(), d * 0.12);
       if (Math.random() < 0.5) bits.push({ x, y, vx: (Math.random() - 0.5) * 60, vy: -40 - Math.random() * 60, life: 1.3, kind: 'bubble', r: 6 + Math.random() * 12 });
-      if (before < 100 && now >= 100) { Sound.sparkle(); say('Squeaky clean!'); setTimeout(() => { bath = false; afterCare(); }, 1200); }
+      if (before < 100 && now >= 100) {
+        Sound.sparkle(); say('Squeaky clean!');
+        const g = Care.bathed(state, pet(), bathDirty, Date.now()); if (g) setTimeout(() => grewUp(g), 1300);
+        setTimeout(() => { bath = false; afterCare(); }, 1200);
+      }
       showNeeds();
     }
   });
-  const stopRub = () => { if (rubbing) { rubbing = false; save(); } };
+  const stopRub = () => {
+    if (dragBall) {
+      ball.vx = Math.max(-1600, Math.min(1600, dragBall.vx * 0.9)); ball.vy = Math.max(-1600, Math.min(1600, dragBall.vy * 0.9));
+      if (Math.hypot(ball.vx, ball.vy) > 300) { Sound.whoosh(); if (Math.random() < 0.5) say('Wheee!'); }
+      dragBall = null;
+    }
+    if (rubbing) { rubbing = false; save(); }
+  };
   canvas.addEventListener('pointerup', stopRub);
   canvas.addEventListener('pointercancel', stopRub);
 
@@ -438,11 +605,17 @@
     if (p.stage !== 'egg') {
       if (p.asleep) target = 0.8;
       else if (bath) target = 0.5;
+      else if (toy === 'ball' && ball) target = ball.carried ? 0.5 : Math.max(0.08, Math.min(0.92, ball.x / vw.w));
+      else if (toy === 'bubbles' && floaters.length) { const nb = floaters.reduce((a, b) => (Math.abs(b.x - petX()) < Math.abs(a.x - petX()) ? b : a)); target = nb.x / vw.w; }
       else if (time > wanderAt) { target = 0.25 + Math.random() * 0.5; wanderAt = time + 3 + Math.random() * 5; }
       if (visitor && !p.asleep && !bath) target = (visitor.x + 0.5) / 2 + Math.sin(time * 0.8) * 0.18; // chasing each other
       const dx = target - px;
-      if (Math.abs(dx) > 0.005) { px += Math.sign(dx) * Math.min(Math.abs(dx), dt * 0.15); face = dx > 0 ? 1 : -1; }
+      const speed = toy ? 0.4 : 0.15; // runs after toys
+      if (Math.abs(dx) > 0.005) { px += Math.sign(dx) * Math.min(Math.abs(dx), dt * speed); face = dx > 0 ? 1 : -1; }
     } else px = 0.5;
+    if (toy === 'ball' && ball) stepBall(dt);
+    if (toy === 'bubbles') stepBubbles(dt);
+    if (toy && p.asleep) stopToy();
     squish = Math.max(0, squish - dt * 3);
     if (visitor) {
       if (now > visitor.until) endPlaydate();
@@ -463,13 +636,15 @@
       ctx.fillStyle = '#e8f6ff'; ctx.strokeStyle = INK; ctx.lineWidth = 4;
       ctx.beginPath(); ctx.roundRect(x - vw.s * 0.45, vw.floor - vw.s * 0.3, vw.s * 0.9, vw.s * 0.32, [0, 0, 40, 40]); ctx.fill(); ctx.stroke();
     }
-    if (visitor) PetArt.draw(ctx, { species: visitor.pet.species, stage: visitor.pet.stage, mood: 'happy', x: vw.w * visitor.x, y: vw.floor, s: vw.s * 0.9, t: time + 1.3, face: visitor.face, squish: visitor.squish });
+    if (visitor) { const vi = PetArt.draw(ctx, { species: visitor.pet.species, stage: visitor.pet.stage, mood: 'happy', x: vw.w * visitor.x, y: vw.floor, s: vw.s * 0.9, t: time + 1.3, face: visitor.face, squish: visitor.squish, noCrown: !!(visitor.pet.outfit && visitor.pet.outfit.top) }); wear(ctx, visitor.pet, vi); }
     const info = PetArt.draw(ctx, {
       species: p.species, stage: p.stage, mood, x: petX(), y: vw.floor, s: p.stage === 'egg' ? vw.s * 0.9 : vw.s, t: time, face, squish, eggTaps: p.eggTaps,
-      dirt: p.stage === 'egg' ? 0 : (60 - p.needs.clean) / 60,
+      dirt: p.stage === 'egg' ? 0 : (60 - p.needs.clean) / 60, noCrown: !!(p.outfit && p.outfit.top),
     });
+    if (p.stage !== 'egg') wear(ctx, p, info);
     if (info) head = { x: info.headX, y: info.headY };
     else head = { x: petX(), y: vw.floor - vw.s * 0.8 };
+    { const bb = $('#bubble'); if (bb.classList.contains('show')) { bb.style.left = `${head.x}px`; bb.style.top = `${head.y - vw.s * 0.32}px`; } }
     if (bath) {
       // bubbles in the tub, and a sponge to rub with
       for (let i = 0; i < 9; i++) { ctx.beginPath(); ctx.arc(petX() - vw.s * 0.38 + i * vw.s * 0.095, vw.floor - vw.s * 0.3 + Math.sin(time * 3 + i) * 4, vw.s * 0.07, 0, Math.PI * 2); ctx.fillStyle = '#fff'; ctx.fill(); ctx.strokeStyle = '#9fdcff'; ctx.lineWidth = 2; ctx.stroke(); }
@@ -478,6 +653,19 @@
       ctx.fillStyle = '#cfefff'; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 4; ctx.stroke();
       ctx.restore();
       if (lastRub && rubbing) { ctx.font = '48px "Noto Color Emoji", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('🧽', lastRub.x, lastRub.y); }
+    }
+    // toys
+    if (ball) {
+      const r = vw.s * 0.09;
+      ctx.beginPath(); ctx.arc(ball.x, ball.y, r, 0, Math.PI * 2); ctx.fillStyle = '#d4ff3a'; ctx.fill();
+      ctx.lineWidth = 3; ctx.strokeStyle = INK; ctx.stroke();
+      ctx.beginPath(); ctx.arc(ball.x - r * 0.9, ball.y, r * 0.9, -0.9, 0.9); ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; ctx.stroke();
+    }
+    for (const b of floaters) {
+      ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(200, 235, 255, 0.35)'; ctx.fill();
+      ctx.strokeStyle = `hsl(${(time * 80 + b.wob * 60) % 360}, 80%, 65%)`; ctx.lineWidth = 3; ctx.stroke();
+      ctx.beginPath(); ctx.arc(b.x - b.r * 0.35, b.y - b.r * 0.35, b.r * 0.2, 0, Math.PI * 2); ctx.fillStyle = 'rgba(255,255,255,0.8)'; ctx.fill();
     }
     // sleeping Zzz
     if (mood === 'asleep') {
@@ -573,7 +761,11 @@
   $('#panel-close').addEventListener('click', () => { $('#panel').hidden = true; update(false); });
 
   // ---------- buttons
-  document.querySelectorAll('.act').forEach(b => b.addEventListener('click', () => act(b.dataset.act)));
+  document.querySelectorAll('[data-act]').forEach(b => b.addEventListener('click', () => {
+    if (b.dataset.act === 'toys') { Sound.unlock(); Sound.pop(); $('#toys').hidden = !$('#toys').hidden; if ($('#toys').hidden) stopToy(); showNeeds(); return; }
+    act(b.dataset.act);
+  }));
+  document.querySelectorAll('[data-toy]').forEach(b => b.addEventListener('click', () => startToy(b.dataset.toy)));
   $('#friends').addEventListener('click', openHouse);
   $('#house-close').addEventListener('click', () => { Sound.pop(); $('#house').hidden = true; });
   const muteBtn = $('#mute');
@@ -584,12 +776,12 @@
   window.addEventListener('pagehide', save);
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') update(true); else save(); });
   // Handy for poking at the game from the browser console.
-  window.myPet = { get state() { return state; }, act, update, openHouse, vw, get px() { return px; }, tapEgg, get visitor() { return visitor; } };
+  window.myPet = { get state() { return state; }, act, startToy, get ball() { return ball; }, get floaters() { return floaters; }, update, openHouse, vw, get px() { return px; }, tapEgg, get visitor() { return visitor; } };
 
   layout();
   Guard.round('visit');
   update(true);
-  setInterval(() => update(false), 10000);
+  setInterval(() => { if (document.visibilityState === 'visible') update(false); }, 10000);
   if (pet().stage === 'egg') Sound.intro('Tap the egg to help it hatch!');
   else Sound.intro('Look after your pet! Feed it, wash it, and turn the light off at bedtime.');
   requestAnimationFrame(loop);

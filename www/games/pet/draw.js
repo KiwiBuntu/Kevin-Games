@@ -165,7 +165,7 @@ const PetArt = (() => {
       c.beginPath(); c.moveTo(hx - hr * 0.7, hy + hr * 0.82); c.quadraticCurveTo(hx, hy + hr * 1.2, hx + hr * 0.7, hy + hr * 0.82);
       c.lineWidth = s * 0.06; c.strokeStyle = INK; c.stroke(); c.lineWidth = s * 0.06 - 5; c.strokeStyle = '#ff4d4d'; c.stroke();
     }
-    if (st === 'grown') {
+    if (st === 'grown' && !o.noCrown) {
       tri(c, [[hx - hr * 0.35, hy - hr * 0.8], [hx - hr * 0.25, hy - hr * 1.25], [hx - hr * 0.05, hy - hr * 0.98], [hx + hr * 0.12, hy - hr * 1.3], [hx + hr * 0.25, hy - hr * 0.98], [hx + hr * 0.45, hy - hr * 1.25], [hx + hr * 0.4, hy - hr * 0.78]], '#ffd60a');
     }
     // ---- grubby when dirty
@@ -182,7 +182,7 @@ const PetArt = (() => {
       c.fillStyle = '#fff'; c.fillRect(0, -3, s * 0.18, 6); c.strokeStyle = INK; c.lineWidth = 2; c.strokeRect(0, -3, s * 0.18, 6);
       blob(c, s * 0.18, 0, 5, 5, '#ff4d4d'); c.restore();
     }
-    return { headX: o.x + (o.face < 0 ? -hx : hx), headY: o.y - bounce + hy, size: s };
+    return { headX: o.x + (o.face < 0 ? -hx : hx), headY: o.y - bounce + hy, size: s, hr };
   }
 
   return { draw: pet, LOOK };

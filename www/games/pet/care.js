@@ -10,13 +10,18 @@ const Care = (() => {
     bunny: { name: 'Bunny', emoji: '🐰' }, doggie: { name: 'Doggie', emoji: '🐶' },
   };
   const STAGES = ['egg', 'baby', 'kid', 'grown'];
-  const GROW_DAYS = { baby: 2, kid: 3 };   // good-care days needed to move on from each stage
   const MAX_FRIENDS = 6;
   const FLOOR = 15;                        // needs never drop below this on their own
   const STEP = 10 * 60 * 1000;             // catch up in 10-minute steps
   // points lost per hour while awake
   const DRAIN = { gentle: { food: 4, fun: 4, clean: 2, energy: 4 }, normal: { food: 7, fun: 6, clean: 3, energy: 6 } };
   const POOP_EVERY = { gentle: 4, normal: 3 }; // hours between poops after eating
+  // While he's playing, things happen much faster so there's always something to do:
+  // points lost per MINUTE (each need takes ~7–20 minutes to start asking), a poop ~4 min after eating.
+  const PLAY = { gentle: { food: 7, fun: 9, clean: 3, energy: 4 }, normal: { food: 9, fun: 11, clean: 4, energy: 5 } };
+  const PLAY_POOP_MIN = 4;
+  const CALM_MS = 40 * 1000;               // after looking after it, it's content for a little while
+  const LOVE_TO_GROW = 100;
 
   const clamp = (v, a = 0, b = 100) => Math.max(a, Math.min(b, v));
   const dayKey = t => { const d = new Date(t); return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`; };
@@ -30,7 +35,7 @@ const Care = (() => {
       id: state.nextId++, species: null, name: '', stage: 'egg', born: now, hatched: 0, eggTaps: 0,
       needs: { food: 80, fun: 80, clean: 100, energy: 90, health: 100 },
       poops: 0, sinceMeal: 0, treats: 0, ache: false, sick: false, asleep: false, lightsOff: false,
-      careDays: [], todayCare: {}, lastTick: now, stagesSeen: ['egg'],
+      careDays: [], todayCare: {}, lastTick: now, stagesSeen: ['egg'], love: 0, grewDay: '', calmUntil: 0, playMeal: 0, outfit: {},
     };
     state.pets.push(pet);
     return pet;
@@ -69,14 +74,25 @@ const Care = (() => {
       const slow = pet.asleep ? 0.1 : night ? 0.4 : 1;
       const floor = live ? 0 : FLOOR;
       const n = pet.needs;
-      n.food = clamp(n.food - rate.food * h * slow, Math.min(n.food, floor));
-      n.fun = clamp(n.fun - rate.fun * h * slow, Math.min(n.fun, floor));
-      n.clean = clamp(n.clean - (rate.clean + pet.poops * 3) * h * slow, Math.min(n.clean, floor));
-      n.energy = pet.asleep ? clamp(n.energy + 25 * h) : clamp(n.energy - rate.energy * h * slow, Math.min(n.energy, floor));
+      // playing: per-minute rates, paused just after care, and gentler if it's already asking for two things
+      let r = rate, per = h;
+      if (live) {
+        r = PLAY[state.speed] || PLAY.gentle;
+        const asking = [n.food, n.fun, n.clean].filter(v => v < 40).length;
+        per = (t < (pet.calmUntil || 0) ? 0 : h * 60) * (asking >= 2 ? 0.3 : 1);
+      }
+      n.food = clamp(n.food - r.food * per * slow, Math.min(n.food, floor));
+      n.fun = clamp(n.fun - r.fun * per * slow, Math.min(n.fun, floor));
+      n.clean = clamp(n.clean - (r.clean + pet.poops * (live ? 1 : 3)) * per * slow, Math.min(n.clean, floor));
+      n.energy = pet.asleep ? clamp(n.energy + (live ? 15 * 60 : 25) * h) : clamp(n.energy - r.energy * per * slow, Math.min(n.energy, floor));
       // poops a while after eating (not while asleep); at most 3 waiting
       if (!pet.asleep) {
         pet.sinceMeal += h;
         if (pet.sinceMeal >= POOP_EVERY[state.speed] && pet.poops < 3) { pet.poops++; pet.sinceMeal = 0; }
+        if (live && pet.playMeal > 0) {
+          pet.playMeal += h * 60;
+          if (pet.playMeal >= PLAY_POOP_MIN && pet.poops < 2) { pet.poops++; pet.playMeal = 0; }
+        }
       }
       // treats wear off
       pet.treats = Math.max(0, pet.treats - h * 0.5);
@@ -90,12 +106,14 @@ const Care = (() => {
     pet.lastTick = now;
     checkCareDay(state, pet, now);
     const notes = {};
+    const g = tryGrow(state, pet, now);
+    if (g) notes.grew = g;
     if (away > 8 * 3600000) notes.missed = true;
     if (pet.poops > startPoops) notes.newPoops = pet.poops - startPoops;
     return notes;
   }
 
-  // A "good care day" = he fed it and it was happy and clean at some point that day.
+  // A "good care day" = he fed it and it was happy and clean at some point that day (kept for the stats).
   function checkCareDay(state, pet, now) {
     const k = dayKey(now);
     const tc = pet.todayCare.day === k ? pet.todayCare : (pet.todayCare = { day: k });
@@ -103,32 +121,40 @@ const Care = (() => {
     if (tc.fed && tc.happy && !pet.careDays.includes(k)) {
       pet.careDays.push(k);
       if (pet.careDays.length > 60) pet.careDays.shift();
-      tc.counted = true;
-      return grow(state, pet);
     }
     return null;
   }
 
-  // Ready to grow? (counts good-care days since reaching the current stage)
-  function grow(state, pet) {
-    const need = GROW_DAYS[pet.stage];
-    if (!need) return null;
-    pet.stageDays = (pet.stageDays || 0) + 1;
-    if (pet.stageDays < need) return null;
+  // Growing up: love fills up from looking after what it actually needs.
+  // A full heart means growing — but only one stage per day (at least a night in between).
+  function addLove(state, pet, amount, now) {
+    if (pet.stage === 'egg' || pet.stage === 'grown') return null;
+    pet.love = Math.min(LOVE_TO_GROW, (pet.love || 0) + amount);
+    pet.calmUntil = now + CALM_MS;
+    return tryGrow(state, pet, now);
+  }
+  function tryGrow(state, pet, now) {
+    if (pet.stage !== 'baby' && pet.stage !== 'kid') return null;
+    if ((pet.love || 0) < LOVE_TO_GROW || pet.grewDay === dayKey(now)) return null;
     pet.stage = pet.stage === 'baby' ? 'kid' : 'grown';
-    pet.stageDays = 0;
+    pet.love = 0;
+    pet.grewDay = dayKey(now);
     pet.stagesSeen.push(pet.stage);
-    pet.grewAt = Date.now();
+    pet.grewAt = now;
     if (pet.stage === 'grown') state.eggReady = true;
     return pet.stage;
   }
+  // Full heart but already grew today → "ready tomorrow"
+  const readyTomorrow = (pet, now) => (pet.stage === 'baby' || pet.stage === 'kid') && (pet.love || 0) >= LOVE_TO_GROW && pet.grewDay === dayKey(now);
 
   // ---------- looking after (each returns { ok, say, ... })
   function feed(state, pet, kind, now) {
     if (pet.asleep) return { ok: false, say: 'Shh… sleeping' };
     const n = pet.needs;
+    const needed = n.food < 60;
     if (kind === 'meal') {
       if (n.food >= 95) return { ok: false, say: "I'm full!" };
+      pet.playMeal = 0.001; // starts the "poop soon" timer while playing
       n.food = clamp(n.food + 35);
       n.health = clamp(n.health + 3);
       pet.sinceMeal = Math.min(pet.sinceMeal, 0);
@@ -139,11 +165,14 @@ const Care = (() => {
       if (pet.treats >= 4 && !pet.ache) { pet.ache = true; n.health = clamp(n.health - 10); return { ok: true, ache: true, say: 'Ow… my tummy hurts!' }; }
     }
     (pet.todayCare.day === dayKey(now) ? pet.todayCare : (pet.todayCare = { day: dayKey(now) })).fed = true;
-    const grew = checkCareDay(state, pet, now);
+    checkCareDay(state, pet, now);
+    const grew = addLove(state, pet, needed ? (kind === 'meal' ? 14 : 6) : 2, now);
     return { ok: true, say: kind === 'meal' ? 'Yum yum!' : 'Sweet!', grew };
   }
 
   function scrub(pet, amount) { pet.needs.clean = clamp(pet.needs.clean + amount); return pet.needs.clean; }
+  // a whole bath, counted once when it gets squeaky clean
+  function bathed(state, pet, wasDirty, now) { return addLove(state, pet, wasDirty ? 12 : 3, now); }
 
   function cleanPoop(pet) {
     if (pet.poops <= 0) return false;
@@ -196,7 +225,8 @@ const Care = (() => {
     pet.stagesSeen.push('baby');
     pet.hatched = now;
     pet.lastTick = now;
-    pet.stageDays = 0;
+    pet.love = 0;
+    pet.grewDay = dayKey(now);
   }
 
   // Start a new egg (when one is ready). The current pet moves to the Friends' House.
@@ -231,8 +261,18 @@ const Care = (() => {
     return state.eggReady && state.pets.length < MAX_FRIENDS && (!cur || cur.stage === 'grown' || state.pets.some(p => p.stage === 'grown'));
   }
 
+  // Playing with a toy: fun up, a little hungrier and more tired.
+  function play(state, pet, amount, now) {
+    if (pet.asleep) return null;
+    const bored = pet.needs.fun < 60;
+    pet.needs.fun = clamp(pet.needs.fun + amount);
+    pet.needs.energy = clamp(pet.needs.energy - amount * 0.15);
+    pet.needs.food = clamp(pet.needs.food - amount * 0.1);
+    return addLove(state, pet, bored ? 5 : 1, now);
+  }
+
   return {
-    SPECIES, STAGES, MAX_FRIENDS, fresh, newPet, activePet, isNight, tick, feed, scrub, cleanPoop, medicine, lights, tickle,
+    SPECIES, LOVE_TO_GROW, addLove, tryGrow, readyTomorrow, bathed, play, STAGES, MAX_FRIENDS, fresh, newPet, activePet, isNight, tick, feed, scrub, cleanPoop, medicine, lights, tickle,
     mood, hatch, takeEgg, bringHome, canTakeEgg, dayKey,
   };
 })();
