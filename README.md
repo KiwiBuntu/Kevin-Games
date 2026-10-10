@@ -25,7 +25,8 @@ www/                    ← upload this folder to the web server
 ├── games/tower/        ← Number Tower
 ├── games/cubes/        ← Cube Pop
 ├── games/potions/      ← Potion Sort
-└── games/candy/        ← Candy Pop
+├── games/candy/        ← Candy Pop
+└── games/pet/          ← My Pet
 ```
 
 ## Test locally

@@ -1,0 +1,93 @@
+body { display: flex; flex-direction: column; background: linear-gradient(#ffe8c7, #ffd6a5); }
+.emoji { font-family: var(--emoji); }
+.bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: max(10px, env(safe-area-inset-top)) 12px 6px; }
+.bar .group { display: flex; gap: 8px; }
+.lock { opacity: 0.5; font-size: 22px; }
+.nametag {
+  background: #fff; border: 4px solid var(--ink); border-radius: 20px; box-shadow: 0 4px 0 var(--ink);
+  padding: 4px 16px; font-size: 28px; font-weight: 700; display: flex; gap: 8px; align-items: center; max-width: 50vw; overflow: hidden; white-space: nowrap;
+}
+#pet-stars { font-size: 18px; }
+
+.meters { display: flex; gap: 8px; justify-content: center; padding: 2px 10px 6px; flex-wrap: wrap; }
+.meter { display: flex; align-items: center; gap: 4px; background: #fff; border: 3px solid var(--ink); border-radius: 16px; padding: 2px 8px 2px 4px; }
+.meter .emoji { font-size: 22px; }
+.meter i { display: block; width: 70px; height: 14px; border: 2px solid var(--ink); border-radius: 8px; overflow: hidden; background: #eee; }
+.meter b { display: block; height: 100%; width: 50%; background: #8ac926; transition: width 0.6s, background 0.6s; }
+.meter.low { animation: needs 1s ease-in-out infinite; }
+@keyframes needs { 50% { transform: scale(1.1); } }
+
+#stage { flex: 1; min-height: 0; position: relative; }
+#room { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; display: block; }
+.bubble {
+  position: absolute; z-index: 3; pointer-events: none; transform: translate(-50%, -100%);
+  background: #fff; border: 4px solid var(--ink); border-radius: 20px; padding: 6px 14px; font-size: 24px; font-weight: 700; white-space: nowrap;
+  opacity: 0; transition: opacity 0.25s;
+}
+.bubble.show { opacity: 1; }
+.bubble::after { content: ""; position: absolute; left: 50%; bottom: -14px; margin-left: -10px; border: 10px solid transparent; border-top-color: var(--ink); }
+#banner {
+  position: absolute; left: 50%; top: 30%; translate: -50% -50%; z-index: 5; pointer-events: none; white-space: nowrap;
+  font-size: 46px; font-weight: 700; color: #fff; -webkit-text-stroke: 3px var(--ink); paint-order: stroke fill; text-shadow: 0 5px 0 var(--ink);
+  opacity: 0; scale: 0.4; transition: opacity 0.25s, scale 0.35s cubic-bezier(.2, 1.6, .4, 1);
+}
+#banner.show { opacity: 1; scale: 1; }
+#playdate-end { position: absolute; right: 12px; top: 10px; z-index: 4; font-size: 22px; font-family: var(--font); font-weight: 700; }
+#playdate-end[hidden] { display: none; }
+
+.actions { display: flex; justify-content: center; gap: 12px; padding: 8px 10px max(12px, env(safe-area-inset-bottom)); flex-wrap: wrap; }
+.btn.act { width: 84px; height: 84px; font-size: 44px; border-radius: 26px; padding: 0; }
+.btn.act.on { background: var(--sun); }
+.btn.act:disabled { opacity: 0.35; }
+
+.sheet { position: fixed; inset: 0; z-index: 30; background: rgba(43, 45, 66, 0.55); display: flex; align-items: center; justify-content: center; padding: 14px; }
+.sheet[hidden] { display: none; }
+.card {
+  background: #fff; border: 5px solid var(--ink); border-radius: 28px; box-shadow: 0 8px 0 var(--ink); padding: 18px 20px;
+  text-align: center; max-height: 100%; overflow-y: auto; animation: pop 0.4s cubic-bezier(.2, 1.6, .4, 1);
+}
+.card.wide { width: min(100%, 760px); }
+.card h2 { margin: 4px 0 12px; font-size: 32px; }
+.card .head { display: flex; justify-content: space-between; align-items: center; }
+.card .head h2 { margin: 0; }
+@keyframes pop { from { transform: scale(0.4); } to { transform: scale(1); } }
+.species { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+.species button, .friend {
+  background: #fffbe8; border: 4px solid var(--ink); border-radius: 22px; box-shadow: 0 5px 0 var(--ink); padding: 6px; cursor: pointer;
+  font: inherit; font-weight: 700; font-size: 20px; color: var(--ink);
+}
+.species canvas { display: block; width: 120px; height: 120px; }
+.names { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; max-width: 520px; }
+.names button { font: inherit; font-weight: 700; font-size: 24px; padding: 8px 16px; border-radius: 16px; border: 4px solid var(--ink); background: #e8f6ff; cursor: pointer; }
+.own { display: flex; gap: 8px; justify-content: center; margin-top: 12px; }
+.own input { font: inherit; font-size: 22px; border: 4px solid var(--ink); border-radius: 14px; padding: 6px 10px; width: 220px; }
+#name-pet { width: 140px; height: 140px; }
+
+.friends { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; margin-top: 12px; }
+.friend { display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: default; }
+.friend.here { background: #c9f7c2; }
+.friend canvas { width: 120px; height: 120px; }
+.friend .stars { font-family: var(--emoji); font-size: 14px; min-height: 18px; }
+.friend .when { font-size: 13px; font-weight: 500; color: #666; }
+.friend .row { display: flex; gap: 6px; }
+.friend .row .btn { height: 48px; min-width: 52px; font-size: 24px; border-radius: 14px; }
+.friend.egg { background: #fff3b0; cursor: pointer; }
+
+.panel { text-align: left; font-size: 18px; }
+.panel h3 { margin: 16px 0 6px; }
+.panel .seg { display: flex; gap: 8px; }
+.panel .seg button { font: inherit; font-weight: 700; padding: 7px 16px; border-radius: 14px; border: 3px solid var(--ink); background: #f2f2f6; cursor: pointer; }
+.panel .seg button.on { background: var(--sun); }
+.panel .own { justify-content: flex-start; }
+.note { color: #666; font-size: 14px; margin: 6px 0; }
+.btn.small { height: 44px; font-size: 18px; border-radius: 12px; font-family: var(--font); }
+#t-pets .p { display: flex; align-items: center; gap: 10px; padding: 4px 0; border-bottom: 2px solid #eee; }
+#t-pets .p span { flex: 1; }
+#t-pets button { border: 0; background: #f2f2f6; border-radius: 10px; font-family: var(--emoji); font-size: 20px; padding: 4px 8px; cursor: pointer; }
+
+@media (max-width: 600px) {
+  .btn.act { width: 62px; height: 62px; font-size: 32px; border-radius: 20px; }
+  .meter i { width: 38px; }
+  .nametag { font-size: 20px; }
+  .bar .group .btn { width: 46px; height: 46px; min-width: 46px; }
+}

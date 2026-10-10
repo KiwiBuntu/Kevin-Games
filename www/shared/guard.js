@@ -12,7 +12,7 @@ const Guard = (() => {
     ['colours', '🌈', 'Connect Colours'], ['jigsaw', '🧩', 'Jigsaw'], ['shapes', '🔺', 'Shape Sorter'],
     ['dots', '✏️', 'Dot to Dot'], ['maze', '🚗', 'Mazes'], ['piano', '🎹', 'Animal Piano'], ['paint', '🎨', 'Paint'],
     ['garage', '🅿️', 'Parking Garage'], ['read', '📚', 'Read Along'], ['tower', '🦸', 'Number Tower'],
-    ['cubes', '🧊', 'Cube Pop'], ['potions', '🧪', 'Potion Sort'], ['candy', '🍬', 'Candy Pop'],
+    ['cubes', '🧊', 'Cube Pop'], ['potions', '🧪', 'Potion Sort'], ['candy', '🍬', 'Candy Pop'], ['pet', '🐣', 'My Pet'],
   ].map(([key, emoji, name]) => ({ key, emoji, name }));
 
   const TICK = 5;          // seconds between checks
