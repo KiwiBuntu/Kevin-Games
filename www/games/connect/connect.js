@@ -28,6 +28,7 @@
   let idle = 0;
   let hintCol = -1;
   let time = 0;
+  let gameNo = 0;          // so an Android move from a finished game can't land in the next one
   const vw = { w: 0, h: 0, s: 50, x0: 0, y0: 0 };
   const android = () => saved.mode === 'android';
   const humanTurn = () => !over && !falling && !thinking && !(android() && turn === 2);
@@ -37,6 +38,7 @@
     $('#result').hidden = true;
     Win.hide();
     board = Connect.make(...SIZES[saved.size]);
+    gameNo++;
     turn = starter;
     hover = -1;
     falling = null;
@@ -146,7 +148,9 @@
     thinking = true;
     showScore();
     const start = performance.now();
+    const g = gameNo;
     setTimeout(() => {
+      if (g !== gameNo) return;
       const c = Connect.bestMove(board, 2, saved.level);
       const wait = Math.max(0, 900 - (performance.now() - start));
       // glide over to the chosen column
@@ -158,10 +162,10 @@
       setTimeout(() => {
         let i = 0;
         const step = () => {
-          if (over) return;
+          if (over || g !== gameNo) return;
           hover = steps[i++];
           if (i < steps.length) setTimeout(step, 140);
-          else setTimeout(() => { thinking = false; if (!over) play(c); }, 260);
+          else setTimeout(() => { if (g !== gameNo) return; thinking = false; if (!over) play(c); }, 260);
         };
         step();
       }, wait);
