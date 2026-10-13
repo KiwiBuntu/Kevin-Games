@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#f6d7b8">
+  <title>Rally</title>
+  <link rel="manifest" href="../../manifest.json">
+  <link rel="icon" href="../../icons/icon-192.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;700&display=swap">
+  <link rel="stylesheet" href="../../shared/style.css">
+  <style>
+    body { background: #f6d7b8; }
+    [hidden] { display: none !important; }
+    #view { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+    .hud { position: fixed; z-index: 5; pointer-events: none; }
+    .hud > * { pointer-events: auto; }
+    .glass {
+      background: rgba(255, 255, 255, 0.82); border: 3px solid var(--ink); border-radius: 18px;
+      box-shadow: 0 4px 0 rgba(43, 45, 66, 0.6); font-weight: 700;
+    }
+    .emo { font-family: var(--emoji); }
+
+    /* top row */
+    #top-l { top: max(10px, env(safe-area-inset-top)); left: 12px; display: flex; gap: 8px; }
+    #top-r { top: max(10px, env(safe-area-inset-top)); right: 12px; display: flex; gap: 8px; }
+    #top-c { top: max(10px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 6px; }
+    #timer { padding: 4px 16px; font-size: 30px; font-variant-numeric: tabular-nums; white-space: nowrap; display: flex; gap: 10px; align-items: center; }
+    #timer .stage { font-size: 18px; background: var(--ink); color: #fff; border-radius: 10px; padding: 1px 8px; }
+    #target { padding: 2px 12px; font-size: 18px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+    #target:empty { display: none; }
+
+    /* pacenote cards */
+    #notes { top: calc(max(10px, env(safe-area-inset-top)) + 96px); left: 50%; transform: translateX(-50%); display: flex; align-items: flex-start; gap: 10px; }
+    .note { display: flex; align-items: center; gap: 6px; padding: 6px 12px 6px 6px; transition: opacity 0.2s; }
+    .note[hidden] { display: none; }
+    .note canvas { display: block; }
+    .note .sev { font-size: 52px; line-height: 1; min-width: 34px; text-align: center; }
+    .note .dist { font-size: 20px; color: #555; font-variant-numeric: tabular-nums; min-width: 60px; }
+    #note2 { transform: scale(0.7); transform-origin: top left; opacity: 0.85; }
+    .note.now { animation: notepulse 0.5s ease-in-out infinite alternate; }
+    @keyframes notepulse { to { background: #fff3a8; } }
+
+    /* progress bar */
+    #prog { left: 16px; top: 50%; transform: translateY(-50%); height: min(46vh, 300px); width: 16px; border-radius: 8px; background: rgba(255, 255, 255, 0.6); border: 3px solid var(--ink); }
+    #prog .flag { position: absolute; top: -34px; left: 50%; transform: translateX(-50%); font-size: 24px; }
+    #prog .pin { position: absolute; left: 50%; width: 22px; height: 22px; border-radius: 50%; border: 3px solid var(--ink); transform: translate(-50%, 50%); bottom: 0; }
+    #pin-car { background: #e63946; z-index: 2; }
+    #pin-ghost { background: rgba(255, 255, 255, 0.85); border-style: dashed !important; }
+    #pin-ghost[hidden] { display: none; }
+
+    /* dashboard */
+    #dash { bottom: max(14px, env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 12px; padding: 6px 14px; background: rgba(43, 45, 66, 0.85); color: #fff; border-color: #fff; }
+    #gear { font-size: 34px; width: 40px; text-align: center; color: var(--sun); }
+    #speed { font-size: 36px; font-variant-numeric: tabular-nums; min-width: 64px; text-align: right; }
+    #dash .unit { font-size: 14px; opacity: 0.8; margin-left: -6px; align-self: flex-end; padding-bottom: 8px; }
+    #rpm { display: flex; gap: 3px; align-items: flex-end; height: 30px; }
+    #rpm i { display: block; width: 7px; background: rgba(255, 255, 255, 0.18); border-radius: 2px; }
+    #rpm i.on { background: #8be08b; }
+    #rpm i.on.hi { background: var(--sun); }
+    #rpm i.on.top { background: #ff5a5f; }
+
+    /* driving buttons */
+    .pad {
+      position: fixed; z-index: 6; bottom: max(16px, env(safe-area-inset-bottom)); width: 104px; height: 104px; border-radius: 50%;
+      font-size: 50px; display: flex; align-items: center; justify-content: center; touch-action: none;
+      background: rgba(255, 255, 255, 0.75); border: 4px solid var(--ink); box-shadow: 0 6px 0 var(--ink); font-family: var(--emoji);
+      user-select: none; -webkit-user-select: none;
+    }
+    .pad.down { transform: translateY(5px); box-shadow: 0 1px 0 var(--ink); background: var(--sun); }
+    #left { left: 18px; }
+    #right { left: 138px; }
+    #brake { right: 18px; width: 120px; height: 120px; background: rgba(255, 220, 220, 0.85); }
+    #brake.down { background: #ff8a8a; }
+    body.tilt #left, body.tilt #right { display: none; }
+    #rescue {
+      position: fixed; z-index: 7; left: 50%; bottom: calc(max(14px, env(safe-area-inset-bottom)) + 84px); transform: translateX(-50%);
+      font-size: 40px; height: 76px; padding: 0 22px; background: var(--sun); animation: bob 0.8s ease-in-out infinite;
+    }
+    #rescue[hidden] { display: none; }
+    @keyframes bob { 50% { margin-bottom: 6px; } }
+
+    /* countdown */
+    #lights { position: fixed; z-index: 8; left: 50%; top: 24%; transform: translate(-50%, -50%); display: flex; gap: 12px; padding: 12px 16px; background: var(--ink); border-radius: 22px; box-shadow: 0 6px 0 rgba(0, 0, 0, 0.3); }
+    #lights[hidden] { display: none; }
+    #lights i { width: 54px; height: 54px; border-radius: 50%; background: #444; border: 3px solid #222; display: block; }
+    #lights i.red { background: #ff3b3b; box-shadow: 0 0 18px #ff3b3b; }
+    #lights i.green { background: #3cff6a; box-shadow: 0 0 22px #3cff6a; }
+
+    /* sheets */
+    .sheet { position: fixed; inset: 0; z-index: 30; background: rgba(43, 45, 66, 0.5); display: flex; align-items: center; justify-content: center; padding: 16px; overflow: auto; }
+    .sheet[hidden] { display: none; }
+    .card { background: #fff; border: 5px solid var(--ink); border-radius: 26px; box-shadow: 0 8px 0 var(--ink); padding: 14px 18px 18px; text-align: center; width: min(100%, 640px); margin: auto; }
+    .card h2 { margin: 0 0 8px; font-size: 32px; }
+    .stages { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+    .stagebtn {
+      appearance: none; font: inherit; color: var(--ink); cursor: pointer; position: relative;
+      border: 4px solid var(--ink); border-radius: 22px; box-shadow: 0 6px 0 var(--ink);
+      padding: 8px 10px 10px; width: 170px; display: flex; flex-direction: column; align-items: center; gap: 2px;
+      font-size: 24px; font-weight: 700;
+    }
+    .stagebtn:active { transform: translateY(4px); box-shadow: 0 2px 0 var(--ink); }
+    .stagebtn .pic { font-family: var(--emoji); font-size: 54px; line-height: 1.15; }
+    .stagebtn .medal { font-family: var(--emoji); font-size: 30px; min-height: 36px; letter-spacing: -2px; }
+    .stagebtn .best { font-size: 17px; color: #555; font-variant-numeric: tabular-nums; min-height: 20px; }
+    .stagebtn.locked { filter: grayscale(0.85); opacity: 0.6; }
+    .stagebtn.locked .pic::after { content: '🔒'; position: absolute; top: 8px; right: 10px; font-size: 30px; }
+    .opts { display: flex; gap: 12px; justify-content: center; margin-top: 14px; flex-wrap: wrap; }
+    .opt { font-size: 22px; font-family: var(--font); gap: 8px; }
+    .opt .emo { font-size: 28px; }
+    .opt.on { background: var(--sun); }
+
+    .result .pic { font-family: var(--emoji); font-size: 76px; line-height: 1.1; animation: win-wiggle 1s ease-in-out infinite; }
+    .result .time { font-size: 44px; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .result .line { font-size: 22px; color: #555; margin: 2px 0; }
+    .result .newbest { color: #e63946; font-size: 26px; font-weight: 700; }
+    .result .row, .pause .row { display: flex; gap: 16px; justify-content: center; margin-top: 14px; }
+    .result .row .btn, .pause .row .btn { font-size: 40px; height: 80px; min-width: 100px; }
+    .medals { display: flex; gap: 14px; justify-content: center; font-size: 20px; margin-top: 6px; font-variant-numeric: tabular-nums; }
+    .medals span { opacity: 0.45; }
+    .medals span.got { opacity: 1; font-weight: 700; }
+
+    #nogl .card p { font-size: 22px; }
+
+    @media (max-width: 760px), (max-height: 520px) {
+      .pad { width: 84px; height: 84px; font-size: 40px; }
+      #right { left: 112px; }
+      #brake { width: 96px; height: 96px; }
+      #timer { font-size: 24px; padding: 2px 12px; }
+      #notes { top: calc(max(10px, env(safe-area-inset-top)) + 80px); }
+      .note .sev { font-size: 40px; }
+      #dash { gap: 8px; padding: 4px 10px; }
+      #speed { font-size: 28px; min-width: 50px; }
+      #gear { font-size: 28px; width: 30px; }
+      #rpm i { width: 5px; }
+      .stagebtn { width: 140px; font-size: 20px; }
+      .stagebtn .pic { font-size: 44px; }
+    }
+    /* phone held upright: the dashboard sits above the buttons */
+    @media (max-width: 480px) {
+      #dash { bottom: calc(max(14px, env(safe-area-inset-bottom)) + 100px); }
+      #rescue { bottom: calc(max(14px, env(safe-area-inset-bottom)) + 160px); }
+      #timer .stage { display: none; }
+      #top-c { top: calc(max(10px, env(safe-area-inset-top)) + 58px); }
+      #notes { top: calc(max(10px, env(safe-area-inset-top)) + 140px); }
+      .stagebtn { width: 100px; padding: 6px 4px 8px; font-size: 18px; }
+      .stagebtn .pic { font-size: 38px; }
+      .stagebtn .medal { font-size: 24px; }
+      .stagebtn .best { font-size: 14px; }
+      #prog { height: 30vh; }
+    }
+    /* short landscape phone */
+    @media (max-height: 420px) {
+      #notes { top: calc(max(8px, env(safe-area-inset-top)) + 70px); }
+      #target { display: none; }
+      #prog { height: 40vh; }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="view"></canvas>
+
+  <div class="hud" id="top-l"><a class="btn round" href="../../index.html" aria-label="Home">🏠</a></div>
+  <div class="hud" id="top-r">
+    <button class="btn round" id="pause" aria-label="Pause">⏸️</button>
+    <button class="btn round" id="mute" aria-label="Sound on or off">🔊</button>
+  </div>
+  <div class="hud" id="top-c">
+    <div class="glass" id="timer"><span class="stage" id="stage-tag">S1</span><span id="clock">0:00.0</span></div>
+    <div class="glass" id="target"></div>
+  </div>
+  <div class="hud" id="notes">
+    <div class="glass note" id="note1" hidden><canvas width="84" height="70"></canvas><span class="sev"></span><span class="dist"></span></div>
+    <div class="glass note" id="note2" hidden><canvas width="84" height="70"></canvas><span class="sev"></span></div>
+  </div>
+  <div class="hud" id="prog"><span class="flag emo">🏁</span><i class="pin" id="pin-ghost"></i><i class="pin" id="pin-car"></i></div>
+  <div class="hud glass" id="dash">
+    <span id="gear">1</span>
+    <span id="speed">0</span><span class="unit">km/h</span>
+    <span id="rpm"></span>
+  </div>
+
+  <div class="pad" id="left" aria-label="Steer left">◀️</div>
+  <div class="pad" id="right" aria-label="Steer right">▶️</div>
+  <div class="pad" id="brake" aria-label="Brake">🛑</div>
+  <button class="btn" id="rescue" aria-label="Back on the road" hidden>↩️ 🛣️</button>
+
+  <div id="lights" hidden><i></i><i></i><i></i></div>
+
+  <!-- Choose a stage -->
+  <div class="sheet" id="menu" hidden>
+    <div class="card">
+      <h2>Rally <span class="emo">🏁</span></h2>
+      <div class="stages" id="stages"></div>
+      <div class="opts">
+        <button class="btn opt" id="opt-ghost" aria-label="Race your ghost"><span class="emo">👻</span>Ghost</button>
+        <button class="btn opt" id="opt-tilt" aria-label="Tilt to steer (grown-ups)"><span class="emo">📱</span>Tilt <span class="emo">🔒</span></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Paused -->
+  <div class="sheet" id="paused" hidden>
+    <div class="card pause">
+      <h2>Paused</h2>
+      <div class="row">
+        <button class="btn" id="resume" aria-label="Keep going">▶️</button>
+        <button class="btn" id="restart" aria-label="Start again">🔄</button>
+        <button class="btn" id="to-menu" aria-label="Choose a stage">🗺️</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Finished -->
+  <div class="sheet" id="result" hidden>
+    <div class="card result">
+      <div class="pic" id="res-pic"></div>
+      <div class="time" id="res-time"></div>
+      <div class="newbest" id="res-new" hidden>New best! <span class="emo">⭐</span></div>
+      <div class="line" id="res-best"></div>
+      <div class="medals" id="res-medals"></div>
+      <div class="row">
+        <button class="btn" id="res-again" aria-label="Race again">▶️</button>
+        <button class="btn" id="res-next" aria-label="Next stage">⏭️</button>
+        <button class="btn" id="res-menu" aria-label="Choose a stage">🗺️</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- This tablet can't draw 3D -->
+  <div class="sheet" id="nogl" hidden>
+    <div class="card">
+      <h2><span class="emo">😢🏎️</span></h2>
+      <p>This tablet can't draw the 3D rally cars.</p>
+      <a class="btn" href="../../index.html" aria-label="Home">🏠</a>
+    </div>
+  </div>
+
+  <script src="../../shared/sound.js"></script>
+  <script src="../../shared/gate.js"></script>
+  <script src="../../shared/guard.js"></script>
+  <script src="../../shared/celebrate.js"></script>
+  <script src="track.js"></script>
+  <script type="module" src="rally.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) navigator.serviceWorker.register('../../sw.js').catch(() => {});
+  </script>
+</body>
+</html>
