@@ -9,7 +9,15 @@ const STAGES = R.STAGES;
 // ---------- saved: best time and ghost for each stage, and the options
 let save = {};
 try { save = JSON.parse(localStorage.getItem('kg-rally')) || {}; } catch (e) {}
-save = { best: {}, ghost: true, tilt: false, ...save };
+save = { best: {}, cleared: {}, ghost: true, tilt: false, kind: 'car', laps: 1, ...save };
+// before laps and vehicles, bests were kept per stage on a different (one-way) road: keep the stages
+// they opened, but drop the old times and ghosts
+for (const key of Object.keys(save.best)) {
+  if (/^\d+$/.test(key)) { if (save.best[key].time <= { 1: 87, 2: 95, 3: 90 }[key]) save.cleared[key] = true; delete save.best[key]; }
+}
+if (!R.VEHICLES[save.kind]) save.kind = 'car';
+const LAPS = [1, 2, 3, 5];
+if (!LAPS.includes(save.laps)) save.laps = 1;
 const store = () => { try { localStorage.setItem('kg-rally', JSON.stringify(save)); } catch (e) {} };
 
 // ---------- 3D set-up (or a kind message if this tablet can't do it)
@@ -133,10 +141,22 @@ function plant(group, list, partsOf) {
       base.copy(M4(p.x, 0, p.z, 0, p.rot, 0, p.size, p.size, p.size));
       m.multiplyMatrices(base, part.m);
       im.setMatrixAt(i, m);
+      (p.inst = p.inst || []).push({ im, i, m: part.m });
     });
     im.castShadow = part.shadow !== false;
     im.receiveShadow = true;
     group.add(im);
+  }
+}
+
+// Flatten something the monster truck drove over (or stand it back up for a new race).
+function squash(p, flat) {
+  const base = M4(p.x, 0, p.z, flat ? 0.15 : 0, p.rot, 0, p.size * (flat ? 1.25 : 1), p.size * (flat ? 0.12 : 1), p.size * (flat ? 1.25 : 1));
+  const m = new THREE.Matrix4();
+  for (const q of p.inst || []) {
+    m.multiplyMatrices(base, q.m);
+    q.im.setMatrixAt(q.i, m);
+    q.im.instanceMatrix.needsUpdate = true;
   }
 }
 
@@ -148,7 +168,9 @@ function ribbon(t, d0, d1, y, color) {
     const rx = Math.cos(p.h), rz = -Math.sin(p.h);
     pos.set([p.x + rx * d0, y, p.z + rz * d0, p.x + rx * d1, y, p.z + rz * d1], i * 6);
     nor.set([0, 1, 0, 0, 1, 0], i * 6);
-    if (i < n - 1) { const a = i * 2; idx.push(a, a + 2, a + 1, a + 1, a + 2, a + 3); }
+    // the last strip joins back to the first: every stage is a loop
+    const a = i * 2, b = ((i + 1) % n) * 2;
+    idx.push(a, b, a + 1, a + 1, b, b + 1);
   });
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
@@ -199,8 +221,8 @@ function gate(group, t, s, label, crowd) {
     m.castShadow = true;
     holder.add(m);
   }
-  const tex = textTexture(label, label === 'FINISH' ? '#e63946' : '#2b9348', '#fff');
-  const plain = lam(label === 'FINISH' ? 0xe63946 : 0x2b9348);
+  const tex = textTexture(label, '#e63946', '#fff', 768, 96);
+  const plain = lam(0xe63946);
   const face = new THREE.MeshLambertMaterial({ map: tex });
   const banner = new THREE.Mesh(new THREE.BoxGeometry(R.WIDTH + 3, 1.5, 0.3), [plain, plain, plain, plain, face, face]);
   banner.position.y = 5;
@@ -234,8 +256,8 @@ function gate(group, t, s, label, crowd) {
   const r = R.rng(Math.round(s));
   for (const side of [-1, 1]) {
     const d = side * (R.HALF + R.SHOULDER + 6.5);
-    for (let a = s - 16; a <= s + 10; a += 13) {
-      const q = R.at(t, a, d);
+    for (const a of R.STANDS) {
+      const q = R.at(t, s + a, d);
       const stand = new THREE.Group();
       stand.position.set(q.x, 0, q.z);
       stand.rotation.y = q.h;
@@ -318,8 +340,94 @@ function makeCar(colour, ghost) {
     wheels.push(spin);
     if (z > 0) fronts.push(pivot);
   }
-  car.userData = { body, wheels, fronts, roll: 0, pitch: 0 };
+  car.userData = { body, wheels, fronts, roll: 0, pitch: 0, wheelR: 0.43, rear: [[-0.95, -1.5], [0.95, -1.5]], lean: 0.006, maxLean: 0.12 };
   return car;
+}
+
+const ghostMat = c => new THREE.MeshLambertMaterial({ color: c, transparent: true, opacity: 0.38, depthWrite: false });
+function parts(ghost) {
+  const mat = c => ghost ? ghostMat(c) : lam(c);
+  const add = (geo, c, x, y, z, parent, rx = 0, ry = 0, rz = 0) => {
+    const m = new THREE.Mesh(geo, mat(c));
+    m.position.set(x, y, z);
+    m.rotation.set(rx, ry, rz);
+    m.castShadow = !ghost;
+    parent.add(m);
+    return m;
+  };
+  const box = (w, h, l, c, x, y, z, parent, rx = 0) => add(new THREE.BoxGeometry(w, h, l), c, x, y, z, parent, rx);
+  const wheel = (r, w, x, y, z, parent) => {
+    const spin = new THREE.Group();
+    spin.position.set(x, y, z);
+    add(new THREE.CylinderGeometry(r, r, w, 12), 0x23232b, 0, 0, 0, spin, 0, 0, Math.PI / 2);
+    add(new THREE.BoxGeometry(w + 0.04, r * 0.7, r * 0.25), 0xd9d9d9, 0, 0, 0, spin);
+    parent.add(spin);
+    return spin;
+  };
+  return { add, box, wheel };
+}
+
+// Motorbike with a rider in a yellow helmet; the whole thing leans into corners.
+function makeBike(colour, ghost) {
+  const bike = new THREE.Group(), body = new THREE.Group();
+  bike.add(body);
+  const { add, box, wheel } = parts(ghost);
+  const back = wheel(0.42, 0.22, 0, 0.42, -0.85, body);
+  const forkPivot = new THREE.Group();
+  forkPivot.position.set(0, 0.42, 0.9);
+  body.add(forkPivot);
+  const front = wheel(0.42, 0.18, 0, 0, 0, forkPivot);
+  box(0.06, 0.75, 0.06, 0x9aa5b1, -0.12, 0.38, -0.05, forkPivot, -0.3);   // forks
+  box(0.06, 0.75, 0.06, 0x9aa5b1, 0.12, 0.38, -0.05, forkPivot, -0.3);
+  box(0.7, 0.06, 0.06, 0x2b2d42, 0, 0.75, -0.15, forkPivot);              // handlebars
+  box(0.36, 0.34, 1.3, colour, 0, 0.72, 0.05, body);                      // frame and engine
+  box(0.42, 0.26, 0.6, colour, 0, 0.98, 0.3, body);                       // tank
+  box(0.3, 0.12, 0.7, 0x2b2d42, 0, 0.98, -0.35, body);                    // seat
+  box(0.34, 0.08, 0.5, colour, 0, 0.82, 1.0, body, 0.25);                 // front mudguard
+  box(0.12, 0.12, 0.6, 0x9aa5b1, 0.2, 0.45, -0.55, body);                 // exhaust
+  box(0.26, 0.16, 0.06, 0xfff3b0, 0, 1.02, 0.9, body);                    // light
+  // rider
+  box(0.42, 0.62, 0.32, 0x2b2d42, 0, 1.38, -0.2, body, 0.55);             // body leaning forward
+  box(0.14, 0.5, 0.14, 0x2b2d42, -0.22, 0.85, -0.2, body, 0.9);            // legs
+  box(0.14, 0.5, 0.14, 0x2b2d42, 0.22, 0.85, -0.2, body, 0.9);
+  box(0.12, 0.12, 0.6, 0x2b2d42, -0.25, 1.42, 0.25, body, -0.5);          // arms
+  box(0.12, 0.12, 0.6, 0x2b2d42, 0.25, 1.42, 0.25, body, -0.5);
+  add(new THREE.IcosahedronGeometry(0.27, 1), 0xffd60a, 0, 1.78, 0.08, body); // helmet
+  box(0.32, 0.12, 0.08, 0x22303c, 0, 1.78, 0.33, body);                   // visor
+  // a bit bigger than life, so it's easy to see from up behind
+  bike.scale.setScalar(1.4);
+  bike.userData = { body, wheels: [back, front], fronts: [forkPivot], roll: 0, pitch: 0, wheelR: 0.42 * 1.4, rear: [[0, -1.3]], lean: -0.035, maxLean: 0.55 };
+  return bike;
+}
+
+// Monster truck: big bouncy wheels, a pickup body up high, a roll bar and stripes.
+function makeTruck(colour, ghost) {
+  const truck = new THREE.Group(), body = new THREE.Group();
+  truck.add(body);
+  const { box, wheel } = parts(ghost);
+  const wheels = [], fronts = [];
+  for (const z of [1.55, -1.55]) for (const x of [-1.3, 1.3]) {
+    const pivot = new THREE.Group();
+    pivot.position.set(x, 0.95, z);
+    truck.add(pivot);
+    wheels.push(wheel(0.95, 0.75, 0, 0, 0, pivot));
+    if (z > 0) fronts.push(pivot);
+  }
+  box(0.25, 0.25, 3.4, 0x2b2d42, -0.8, 1.15, 0, body);                    // chassis rails
+  box(0.25, 0.25, 3.4, 0x2b2d42, 0.8, 1.15, 0, body);
+  for (const x of [-1, 1]) for (const z of [1.2, -1.2]) box(0.12, 0.7, 0.12, 0xffd60a, x * 0.9, 1.5, z, body);  // springs
+  box(2.3, 0.6, 3.9, colour, 0, 1.95, 0, body);                           // body
+  box(1.9, 0.7, 1.5, colour, 0, 2.6, 0.15, body);                         // cab
+  box(1.94, 0.42, 1.2, 0x22303c, 0, 2.66, 0.15, body);                    // windows
+  box(1.7, 0.45, 0.08, 0x22303c, 0, 2.6, 0.92, body, -0.35);              // windscreen
+  box(2.32, 0.14, 3.92, 0xffd60a, 0, 1.75, 0, body);                      // stripe
+  box(0.1, 0.8, 0.1, 0x2b2d42, -0.85, 2.6, -1.2, body);                   // roll bar
+  box(0.1, 0.8, 0.1, 0x2b2d42, 0.85, 2.6, -1.2, body);
+  box(1.8, 0.1, 0.1, 0x2b2d42, 0, 3.0, -1.2, body);
+  box(0.5, 0.2, 0.08, 0xfff3b0, 0.65, 2.0, 1.96, body);                   // lights
+  box(0.5, 0.2, 0.08, 0xfff3b0, -0.65, 2.0, 1.96, body);
+  truck.userData = { body, wheels, fronts, roll: 0, pitch: 0, wheelR: 0.95, rear: [[-1.3, -1.7], [1.3, -1.7]], lean: 0.012, maxLean: 0.2, bounce: true };
+  return truck;
 }
 
 // ---------- dust puffs from the back wheels
@@ -385,9 +493,20 @@ function moveSnow(dt, cx, cz) {
 
 // ---------- building a stage
 let world = null, T = null, SC = null, stageIdx = 0, crowds = [];
-const carMesh = makeCar(0xe63946, false);
-const ghostMesh = makeCar(0x8fd3ff, true);
-scene.add(carMesh, ghostMesh);
+const MAKE = { car: makeCar, bike: makeBike, truck: makeTruck };
+const COLOUR = { car: 0xe63946, bike: 0x3a86ff, truck: 0x2b9348 };
+const meshes = {}, ghosts = {};
+for (const k of Object.keys(MAKE)) {
+  meshes[k] = MAKE[k](COLOUR[k], false);
+  ghosts[k] = MAKE[k](0x8fd3ff, true);
+  scene.add(meshes[k], ghosts[k]);
+}
+let carMesh = meshes.car, ghostMesh = ghosts.car;
+function showVehicle(kind) {
+  for (const k of Object.keys(MAKE)) { meshes[k].visible = k === kind; ghosts[k].visible = false; }
+  carMesh = meshes[kind];
+  ghostMesh = ghosts[kind];
+}
 
 function disposeWorld() {
   if (!world) return;
@@ -433,7 +552,7 @@ function buildWorld(idx) {
   plant(world, SC.props, (p, n) => k[p.kind](n));
   plant(world, SC.far, (p, n) => k[p.kind](n));
 
-  crowds = [gate(world, T, R.LINE_S, 'START', true), gate(world, T, T.finish, 'FINISH', true)].filter(Boolean);
+  crowds = [gate(world, T, R.LINE_S, 'START · FINISH', true)];
   makeDust(world, st.id === 3 ? 0xffffff : st.edge);
   snow = null;
   if (st.id === 3) makeSnow(world);
@@ -529,7 +648,7 @@ function audioUpdate(rpm, on) {
   if (!eng) return;
   const t = ac.currentTime;
   const live = on && !Sound.isMuted();
-  const f = 48 + rpm * 120;
+  const f = (48 + rpm * 120) * ({ bike: 1.6, truck: 0.7 }[car.kind] || 1);
   eng.osc.frequency.setTargetAtTime(f, t, 0.05);
   eng.sub.frequency.setTargetAtTime(f / 2, t, 0.05);
   eng.filter.frequency.setTargetAtTime(350 + rpm * 900, t, 0.05);
@@ -553,23 +672,30 @@ function beep(freq, len) {
 }
 
 // ---------- the race
-let car = null, state = 'menu', time = 0, prog = 0, noteIdx = 0, spokenTo = -1;
-let count = 0, rec = [], recT = 0, ghost = null, ghostHint = 0, stuck = 0, progMark = 0, finishT = 0;
+let car = null, state = 'menu', time = 0, prog = 0, noteIdx = 0, spokenTo = -1, laps = 1, lap = 1, finishLine = 0, lapCall = null, lapT = 0;
+let count = 0, rec = [], recT = 0, ghost = null, ghostHint = 0, ghostProg = 0, stuck = 0, progMark = 0, finishT = 0;
 let camH = 0, camPos = new THREE.Vector3(), orbit = 0, slowFrames = [], wasBump = 0;
+// Medal times, best times and ghosts belong to a stage, a vehicle and a number of laps.
 const built = {};
-const medalsFor = idx => R.medals(built[idx] = built[idx] || R.build(STAGES[idx]));
+const medalsFor = idx => R.medals(built[idx] = built[idx] || R.build(STAGES[idx]), save.kind, save.laps);
 const medalOf = (idx, t) => {
   const m = medalsFor(idx);
   return t <= m.gold ? 'gold' : t <= m.silver ? 'silver' : t <= m.bronze ? 'bronze' : '';
 };
 const MEDAL = { gold: '🥇', silver: '🥈', bronze: '🥉' };
-const bestOf = idx => save.best[STAGES[idx].id];
+const bestKey = idx => `${STAGES[idx].id}-${save.kind}-${save.laps}`;
+const bestOf = idx => save.best[bestKey(idx)];
 const medalWon = idx => { const b = bestOf(idx); return b ? medalOf(idx, b.time) : ''; };
-const unlocked = idx => idx === 0 || !!medalWon(idx - 1);
+// a bronze in anything opens the next stage
+const unlocked = idx => idx === 0 || !!save.cleared[STAGES[idx - 1].id];
+const NUM = ['', 'one', 'two', 'three', 'four', 'five'];
+// the corners in order over all the laps: note j is corner j % N on lap j / N
+const noteAt = j => { const n = T.notes[j % T.notes.length]; return { ...n, s: n.s + Math.floor(j / T.notes.length) * T.length }; };
 const fmt = t => { const m = Math.floor(t / 60), s = t - m * 60; return `${m}:${s.toFixed(1).padStart(4, '0')}`; };
 
 function placeCar() {
-  car = R.newCar(T);
+  car = R.newCar(T, save.kind);
+  showVehicle(save.kind);
   camH = car.h;
   const back = R.at(T, R.START_S - 16);
   camPos.set(back.x, 12, back.z);
@@ -581,7 +707,13 @@ function startRace(idx) {
   placeCar();
   state = 'count';
   count = 0; time = 0; prog = R.START_S; noteIdx = 0; spokenTo = -1; rec = []; recT = 0; stuck = 0; progMark = prog; finishT = 0;
-  ghostHint = 0;
+  ghostHint = 0; ghostProg = R.START_S;
+  laps = save.laps; lap = 1; lapCall = null;
+  finishLine = R.finishAt(T, laps);
+  $('#lap').hidden = laps === 1;
+  showLap();
+  // stand squashed things back up
+  for (const o of SC.solid) if (o.gone) { o.gone = false; squash(o, false); }
   const b = bestOf(idx);
   ghost = save.ghost && b && b.ghost ? b.ghost : null;
   ghostMesh.visible = !!ghost;
@@ -591,7 +723,7 @@ function startRace(idx) {
   tiltZero = tiltAngle;
   showTilt();
   showTarget();
-  Guard.round(`${STAGES[idx].pic} ${STAGES[idx].name}`);
+  Guard.round(`${STAGES[idx].pic} ${STAGES[idx].name} · ${R.VEHICLES[save.kind].pic}${laps > 1 ? ` · ${laps} laps` : ''}`);
   $('#lights').hidden = false;
   [...$('#lights').children].forEach(l => { l.className = ''; });
   audioStart();
@@ -607,9 +739,11 @@ function showTarget() {
   $('#target').innerHTML = text.replace(/^(\S+)/, '<span class="emo">$1</span>');
 }
 
+function showLap() { $('#lap').innerHTML = `Lap <b>${lap}</b>/${laps}`; }
+
 function rescue() {
   const p = R.at(T, Math.max(R.START_S, prog - 4));
-  Object.assign(car, { x: p.x, z: p.z, h: p.h, vx: 0, vz: 0, yaw: 0, steer: 0, speed: 0, slide: 0, hint: Math.round(prog) });
+  Object.assign(car, { x: p.x, z: p.z, h: p.h, vx: 0, vz: 0, yaw: 0, steer: 0, speed: 0, slide: 0, hint: R.locate(T, p.x, p.z).i });
   stuck = 0; progMark = prog;
   $('#rescue').hidden = true;
   Sound.whoosh();
@@ -636,28 +770,44 @@ function physics() {
     const w = R.step(T, SC, car, input, DT);
     if (car.bump > 3 && wasBump <= 0) { Sound.bonk(); wasBump = 0.4; }
     wasBump -= DT;
+    for (const o of car.crushed) {
+      squash(o, true);
+      Sound.snap();
+      for (let i = 0; i < 8; i++) puff(o.x, o.z, car.vx * 0.5, car.vz * 0.5, true);
+      Guard.count('🛻 squashed');
+    }
     if (go) {
       time += DT;
-      if (Math.abs(w.d) < 25 && w.s > prog && w.s - prog < 60) prog = w.s;
+      prog = R.advance(T, prog, w);
+      // a new lap
+      const nowLap = Math.min(laps, Math.max(1, Math.floor((prog - R.LINE_S) / T.length) + 1));
+      if (nowLap !== lap) {
+        lap = nowLap;
+        showLap();
+        $('#lap').classList.remove('flash'); void $('#lap').offsetWidth; $('#lap').classList.add('flash');
+        lapCall = lap === laps ? 'Last lap!' : `Lap ${NUM[lap] || lap}!`;
+        lapT = 0;
+        Sound.sparkle();
+      }
       // co-driver: call the next corner in good time (and the one after if they run together)
-      const notes = T.notes;
-      while (noteIdx < notes.length && prog > notes[noteIdx].s + notes[noteIdx].len * 0.5) noteIdx++;
-      const n = notes[noteIdx];
+      while (noteAt(noteIdx).s + noteAt(noteIdx).len * 0.5 < prog) noteIdx++;
+      const n = noteAt(noteIdx);
       const lead = Math.max(55, Math.min(95, car.speed * 3.4));
-      if (n && spokenTo < noteIdx && n.s - prog < lead) {
-        let text = R.call(n);
-        spokenTo = noteIdx;
-        if (n.into && notes[noteIdx + 1]) { text += ', into ' + R.call(notes[noteIdx + 1]).toLowerCase(); spokenTo = noteIdx + 1; }
+      if (spokenTo < noteIdx && n.s - prog < lead && n.s < finishLine) {
+        let text = R.call(n) + (n.into && noteAt(noteIdx + 1).s < finishLine ? ', into ' + R.call(noteAt(noteIdx + 1)).toLowerCase() : '');
+        spokenTo = n.into ? noteIdx + 1 : noteIdx;
+        if (lapCall) { text = lapCall + ' ' + text; lapCall = null; }
         speak(text + '!');
       }
+      if (lapCall && (lapT += DT) > 1) { speak(lapCall); lapCall = null; }
       // record for the ghost
       recT += DT;
-      if (recT >= 0.1 - 1e-6) { recT = 0; rec.push(Math.round(car.x * 10) / 10, Math.round(car.z * 10) / 10, Math.round(car.h * 100) / 100); }
+      if (recT >= 0.2 - 1e-6) { recT = 0; rec.push(Math.round(car.x * 10) / 10, Math.round(car.z * 10) / 10, Math.round(car.h * 100) / 100); }
       // stuck or lost? offer the way back
       if (prog > progMark + 4) { progMark = prog; stuck = 0; } else stuck += DT;
       if ((stuck > 4 || Math.abs(w.d) > 30) && $('#rescue').hidden) $('#rescue').hidden = false;
       if (!$('#rescue').hidden && stuck < 0.5 && Math.abs(w.d) < 12) $('#rescue').hidden = true;
-      if (prog >= T.finish) finish();
+      if (prog >= finishLine) finish();
     } else {
       finishT += DT;
     }
@@ -670,16 +820,18 @@ function finish() {
   $('#rescue').hidden = true;
   crowds.forEach(c => { c.excite = 1; });
   const id = STAGES[stageIdx].id;
-  const old = save.best[id];
+  const old = bestOf(stageIdx);
   const isBest = !old || time < old.time;
-  const hadMedal = medalWon(stageIdx);
-  if (isBest) { save.best[id] = { time: Math.round(time * 100) / 100, ghost: rec }; store(); }
+  const wasOpen = stageIdx + 1 < STAGES.length && unlocked(stageIdx + 1);
   const medal = medalOf(stageIdx, time);
+  if (isBest) save.best[bestKey(stageIdx)] = { time: Math.round(time * 100) / 100, ghost: rec };
+  if (medal) save.cleared[id] = true;
+  store();
   Sound.cheer();
-  if (medal) { Guard.won(); Guard.count(`${MEDAL[medal]} ${STAGES[stageIdx].name}`); } else Guard.failed();
+  if (medal) { Guard.won(); Guard.count(`${MEDAL[medal]} ${STAGES[stageIdx].name} ${R.VEHICLES[save.kind].pic}`); } else Guard.failed();
   if (medal) Celebrate.burst();
   speak(medal ? `${medal[0].toUpperCase() + medal.slice(1)} medal!` : 'Finished! Try for bronze!');
-  setTimeout(() => showResult(time, medal, isBest && !!old, !hadMedal && medal && stageIdx + 1 < STAGES.length), 1600);
+  setTimeout(() => showResult(time, medal, isBest && !!old, !wasOpen && stageIdx + 1 < STAGES.length && unlocked(stageIdx + 1)), 1600);
 }
 
 function showResult(t, medal, newBest, opened) {
@@ -722,10 +874,26 @@ function showMenu() {
     });
     box.appendChild(b);
   });
+  document.querySelectorAll('#vehicles .choice').forEach(b => b.classList.toggle('on', b.dataset.kind === save.kind));
+  document.querySelectorAll('#laps .lapbtn').forEach(b => b.classList.toggle('on', +b.dataset.laps === save.laps));
   $('#opt-ghost').classList.toggle('on', !!save.ghost);
   $('#opt-tilt').classList.toggle('on', !!save.tilt);
   $('#menu').hidden = false;
 }
+// pick a vehicle and how many laps (the medals and best times shown are for that choice)
+document.querySelectorAll('#vehicles .choice').forEach(b => b.addEventListener('click', () => {
+  Sound.unlock(); Sound.pop();
+  save.kind = b.dataset.kind; store();
+  placeCar();
+  speak(R.VEHICLES[save.kind].name);
+  showMenu();
+}));
+document.querySelectorAll('#laps .lapbtn').forEach(b => b.addEventListener('click', () => {
+  Sound.unlock(); Sound.pop();
+  save.laps = +b.dataset.laps; store();
+  speak(save.laps === 1 ? 'One lap' : `${NUM[save.laps]} laps`);
+  showMenu();
+}));
 $('#opt-ghost').addEventListener('click', () => { save.ghost = !save.ghost; store(); Sound.pop(); showMenu(); });
 $('#opt-tilt').addEventListener('click', () => {
   Gate.ask(async () => {
@@ -816,27 +984,28 @@ function hud() {
   const lit = Math.round(rpm * rpmBars.length);
   rpmBars.forEach((b, i) => { b.className = i < lit ? (i >= 10 ? 'on top' : i >= 7 ? 'on hi' : 'on') : ''; });
   // progress pins
-  const frac = s => Math.max(0, Math.min(1, (s - R.START_S) / (T.finish - R.START_S)));
+  const frac = s => Math.max(0, Math.min(1, (s - R.START_S) / (finishLine - R.START_S)));
   $('#pin-car').style.bottom = (frac(prog) * 100) + '%';
-  if (ghost && ghostMesh.visible) {
+  if (ghost && ghostMesh.visible && state !== 'paused') {
     const gl = R.locate(T, ghostMesh.position.x, ghostMesh.position.z, ghostHint);
     ghostHint = gl.i;
-    $('#pin-ghost').style.bottom = (frac(gl.s) * 100) + '%';
+    ghostProg = R.advance(T, ghostProg, gl);
+    $('#pin-ghost').style.bottom = (frac(ghostProg) * 100) + '%';
   }
-  // pacenotes
-  const notes = T.notes, n = state === 'race' ? notes[noteIdx] : null;
+  // pacenotes (only the corners before the finish line)
+  const n = state === 'race' ? noteAt(noteIdx) : null, next = n && noteAt(noteIdx + 1);
   const lead = Math.max(55, Math.min(95, car.speed * 3.4)) + 50;
-  const show1 = n && n.s - prog < lead ? n : null;
-  const n2 = show1 && notes[noteIdx + 1] && notes[noteIdx + 1].s - prog < lead + 60 ? notes[noteIdx + 1] : null;
+  const show1 = n && n.s - prog < lead && n.s < finishLine ? n : null;
+  const n2 = show1 && next.s - prog < lead + 60 && next.s < finishLine ? next : null;
   const c1 = $('#note1'), c2 = $('#note2');
-  if (show1 !== cards.n1) { cards.n1 = show1; if (show1) { drawArrow(c1.querySelector('canvas'), show1); c1.querySelector('.sev').textContent = show1.sev; } }
+  if (show1?.s !== cards.n1?.s) { cards.n1 = show1; if (show1) { drawArrow(c1.querySelector('canvas'), show1); c1.querySelector('.sev').textContent = show1.sev; } }
   c1.hidden = !show1;
   if (show1) {
     const d = Math.round(show1.s - prog);
     c1.querySelector('.dist').textContent = d > 3 ? `${d} m` : 'now!';
     c1.classList.toggle('now', d <= 25);
   }
-  if (n2 !== cards.n2) { cards.n2 = n2; if (n2) { drawArrow(c2.querySelector('canvas'), n2); c2.querySelector('.sev').textContent = n2.sev; } }
+  if (n2?.s !== cards.n2?.s) { cards.n2 = n2; if (n2) { drawArrow(c2.querySelector('canvas'), n2); c2.querySelector('.sev').textContent = n2.sev; } }
   c2.hidden = !n2;
   audioUpdate(rpm, state === 'race' || state === 'done' || state === 'count');
 }
@@ -847,13 +1016,15 @@ function placeMeshes(dt) {
   carMesh.position.set(car.x, 0, car.z);
   carMesh.rotation.y = car.h;
   const u = carMesh.userData;
-  u.wheels.forEach(w => { w.rotation.x += car.speed * dt / 0.43; });
+  u.wheels.forEach(w => { w.rotation.x += car.speed * dt / u.wheelR; });
   u.fronts.forEach(f => { f.rotation.y = -car.steer * 0.45; });
-  const roll = Math.max(-0.12, Math.min(0.12, car.yaw * car.speed * 0.006));
+  // cars and trucks lean out of a corner, the motorbike leans into it
+  const roll = Math.max(-u.maxLean, Math.min(u.maxLean, car.yaw * car.speed * u.lean));
   u.roll += (roll - u.roll) * Math.min(1, dt * 6);
   const pitch = state === 'race' && keys.brake ? 0.05 : 0;
   u.pitch += (pitch - u.pitch) * Math.min(1, dt * 8);
   u.body.rotation.set(u.pitch, 0, u.roll);
+  if (u.bounce) u.body.position.y = Math.abs(Math.sin(clock * 9)) * Math.min(0.15, car.speed * (car.surface === 'road' ? 0.002 : 0.008));
 
   // dust from the back wheels
   const fx = Math.sin(car.h), fz = Math.cos(car.h), rx = Math.cos(car.h), rz = -Math.sin(car.h);
@@ -865,8 +1036,8 @@ function placeMeshes(dt) {
   rate *= dt * 30;
   while (rate > 0) {
     if (rate >= 1 || Math.random() < rate) {
-      const side = Math.random() < 0.5 ? -1 : 1;
-      puff(car.x - fx * 1.5 + rx * side * 0.95, car.z - fz * 1.5 + rz * side * 0.95, -car.vx, -car.vz, car.surface === 'sand' || Math.abs(car.slide) > 3);
+      const [wx, wz] = u.rear[Math.floor(Math.random() * u.rear.length)];
+      puff(car.x + fx * wz + rx * wx, car.z + fz * wz + rz * wx, -car.vx, -car.vz, car.surface === 'sand' || Math.abs(car.slide) > 3);
     }
     rate -= 1;
   }
@@ -874,7 +1045,7 @@ function placeMeshes(dt) {
 
   // ghost
   if (ghost && (state === 'race' || state === 'done' || state === 'paused')) {
-    const f = time / 0.1, i = Math.floor(f), k = f - i;
+    const f = time / 0.2, i = Math.floor(f), k = f - i;
     const a = i * 3, b = Math.min(ghost.length - 3, a + 3);
     if (a < ghost.length - 3) {
       ghostMesh.visible = true;
@@ -896,10 +1067,11 @@ function moveCamera(dt) {
     // swing slowly from side to side behind the waiting car
     orbit += dt * 0.35;
     const a = car.h + Math.PI + Math.sin(orbit) * 0.9;
-    const d = innerWidth < innerHeight ? 15 : 10;
-    camPos.set(car.x + Math.sin(a) * d, 3.6, car.z + Math.cos(a) * d);
+    const big = car.kind === 'truck' ? 1.35 : 1;
+    const d = (innerWidth < innerHeight ? 15 : 10) * big;
+    camPos.set(car.x + Math.sin(a) * d, 3.6 * big, car.z + Math.cos(a) * d);
     camera.position.copy(camPos);
-    camera.lookAt(car.x + Math.sin(car.h) * 4, 1.6, car.z + Math.cos(car.h) * 4);
+    camera.lookAt(car.x + Math.sin(car.h) * 4, 1.6 * big, car.z + Math.cos(car.h) * 4);
     return;
   }
   // follow the way the car is going (not where its nose points in a drift), a little behind
@@ -971,4 +1143,4 @@ placeCar();
 showMenu();
 requestAnimationFrame(frame);
 Sound.intro('Race to the finish! Listen to your co-driver for the corners.');
-window.__rally = { get state() { return state; }, get car() { return car; }, get time() { return time; }, get prog() { return prog; }, get T() { return T; }, keys, startRace, rescue, R, save, get quality() { return quality; }, set turbo(v) { turbo = v; }, set auto(v) { autoDrive = v; } };
+window.__rally = { get state() { return state; }, get car() { return car; }, get time() { return time; }, get prog() { return prog; }, get T() { return T; }, get SC() { return SC; }, keys, startRace, rescue, R, save, get quality() { return quality; }, set turbo(v) { turbo = v; }, set auto(v) { autoDrive = v; } };

@@ -30,6 +30,11 @@
     #timer .stage { font-size: 18px; background: var(--ink); color: #fff; border-radius: 10px; padding: 1px 8px; }
     #target { padding: 2px 12px; font-size: 18px; white-space: nowrap; font-variant-numeric: tabular-nums; }
     #target:empty { display: none; }
+    .row-c { display: flex; gap: 8px; align-items: center; }
+    #lap { padding: 2px 12px; font-size: 18px; white-space: nowrap; }
+    #lap b { font-size: 22px; }
+    #lap.flash { animation: lapflash 0.5s ease-in-out 4 alternate; }
+    @keyframes lapflash { to { background: var(--sun); transform: scale(1.35); } }
 
     /* pacenote cards */
     #notes { top: calc(max(10px, env(safe-area-inset-top)) + 96px); left: 50%; transform: translateX(-50%); display: flex; align-items: flex-start; gap: 10px; }
@@ -106,6 +111,19 @@
     .stagebtn .best { font-size: 17px; color: #555; font-variant-numeric: tabular-nums; min-height: 20px; }
     .stagebtn.locked { filter: grayscale(0.85); opacity: 0.6; }
     .stagebtn.locked .pic::after { content: '🔒'; position: absolute; top: 8px; right: 10px; font-size: 30px; }
+    .pick { display: flex; gap: 10px; justify-content: center; align-items: center; margin: 0 0 12px; flex-wrap: wrap; }
+    .choice {
+      appearance: none; font: inherit; color: var(--ink); cursor: pointer; background: #f2f2f6;
+      border: 4px solid var(--ink); border-radius: 20px; box-shadow: 0 5px 0 var(--ink);
+      padding: 6px 10px; min-width: 120px; display: flex; flex-direction: column; align-items: center; gap: 2px;
+      font-size: 19px; font-weight: 700;
+    }
+    .choice:active { transform: translateY(4px); box-shadow: 0 1px 0 var(--ink); }
+    .choice.on { background: var(--sun); }
+    .choice .big { font-family: var(--emoji); font-size: 40px; line-height: 1.1; }
+    .lapword { font-size: 24px; font-weight: 700; margin-right: 4px; }
+    .lapbtn { font-family: var(--font); font-weight: 700; font-size: 28px; width: 60px; }
+    .lapbtn.on { background: var(--sun); }
     .opts { display: flex; gap: 12px; justify-content: center; margin-top: 14px; flex-wrap: wrap; }
     .opt { font-size: 22px; font-family: var(--font); gap: 8px; }
     .opt .emo { font-size: 28px; }
@@ -145,6 +163,10 @@
       #top-c { top: calc(max(10px, env(safe-area-inset-top)) + 58px); }
       #notes { top: calc(max(10px, env(safe-area-inset-top)) + 140px); }
       .stagebtn { width: 100px; padding: 6px 4px 8px; font-size: 18px; }
+      .choice { min-width: 0; width: 104px; font-size: 15px; padding: 4px 4px; }
+      .choice .big { font-size: 32px; }
+      .lapbtn { width: 50px; font-size: 24px; }
+      .card h2 { font-size: 26px; margin-bottom: 4px; }
       .stagebtn .pic { font-size: 38px; }
       .stagebtn .medal { font-size: 24px; }
       .stagebtn .best { font-size: 14px; }
@@ -152,6 +174,18 @@
     }
     /* short landscape phone */
     @media (max-height: 420px) {
+      #top-c { flex-direction: row; }
+      .card { padding: 8px 14px 12px; }
+      .card h2 { font-size: 22px; margin: 0 0 4px; }
+      .pick { margin-bottom: 6px; gap: 8px; }
+      .choice { flex-direction: row; gap: 6px; padding: 2px 10px; font-size: 16px; min-width: 0; width: auto; }
+      .choice .big { font-size: 26px; }
+      .lapbtn { height: 44px; width: 48px; font-size: 22px; }
+      .stagebtn { padding: 4px 6px 6px; }
+      .stagebtn .pic { font-size: 32px; }
+      .stagebtn .medal { min-height: 26px; font-size: 22px; }
+      .opts { margin-top: 8px; }
+      .opt { height: 44px; }
       #notes { top: calc(max(8px, env(safe-area-inset-top)) + 70px); }
       #target { display: none; }
       #prog { height: 40vh; }
@@ -168,7 +202,7 @@
   </div>
   <div class="hud" id="top-c">
     <div class="glass" id="timer"><span class="stage" id="stage-tag">S1</span><span id="clock">0:00.0</span></div>
-    <div class="glass" id="target"></div>
+    <div class="row-c"><div class="glass" id="lap" hidden></div><div class="glass" id="target"></div></div>
   </div>
   <div class="hud" id="notes">
     <div class="glass note" id="note1" hidden><canvas width="84" height="70"></canvas><span class="sev"></span><span class="dist"></span></div>
@@ -192,6 +226,18 @@
   <div class="sheet" id="menu" hidden>
     <div class="card">
       <h2>Rally <span class="emo">🏁</span></h2>
+      <div class="pick" id="vehicles">
+        <button class="choice" data-kind="car" aria-label="Rally car"><span class="big">🏎️</span>Car</button>
+        <button class="choice" data-kind="bike" aria-label="Motorbike"><span class="big">🏍️</span>Motorbike</button>
+        <button class="choice" data-kind="truck" aria-label="Monster truck"><span class="big">🛻</span>Monster truck</button>
+      </div>
+      <div class="pick" id="laps">
+        <span class="lapword">Laps</span>
+        <button class="btn lapbtn" data-laps="1" aria-label="One lap">1</button>
+        <button class="btn lapbtn" data-laps="2" aria-label="Two laps">2</button>
+        <button class="btn lapbtn" data-laps="3" aria-label="Three laps">3</button>
+        <button class="btn lapbtn" data-laps="5" aria-label="Five laps">5</button>
+      </div>
       <div class="stages" id="stages"></div>
       <div class="opts">
         <button class="btn opt" id="opt-ghost" aria-label="Race your ghost"><span class="emo">👻</span>Ghost</button>
